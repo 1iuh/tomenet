@@ -119,9 +119,9 @@ function module_load(wx,wy,wz,name,light)
           r_death = r / 2000
           r = imod(r, 2000)
         else r_death = 0 end
-        custom_place_monster_ego(wpos,y,x,r,e,1,0,0,0,r_death,0,0,0,0,0) -- sleep 1
-        --custom_place_monster_ego(wpos, y, x, r_idx, e_idx, slp, grp, clo, clone_summoning,
-        --                         custom_lua_death, custom_lua_deletion, custom_lua_awoke, custom_lua_sighted, custom_lua_spawned, custom_xp)
+        custom_place_monster_ego(wpos,y,x,r,e,1,0,0,0,0,r_death,0,0,0,0) -- sleep 1
+        --custom_place_monster_ego(wpos, y, x, r_idx, e_idx, slp, grp, clo, clone_summoning, custom_xp,
+        --                         custom_lua_death, custom_lua_deletion, custom_lua_awoke, custom_lua_sighted, custom_lua_spawned)
       end
       t,s = 0,0
       t = read("*n")
