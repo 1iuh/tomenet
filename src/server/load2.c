@@ -2036,7 +2036,7 @@ static bool rd_extra(int Ind) {
 	//these are zero if read from old save file < 4,9,0 :
 	rd_u16b(&p_ptr->event_participated_flags);
 	rd_u16b(&p_ptr->event_won_flags);
-	rd_byte(&p_ptr->lifetime_flags);
+	rd_byte(&p_ptr->lifetime_flags); //unused -> HOLE
 
 	rd_byte(&p_ptr->autoret_base); //0 means 'on' (default) - so there is no conversion needed for old chars since these bytes were 0 anyway
 
