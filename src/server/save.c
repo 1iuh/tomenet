@@ -427,7 +427,7 @@ static void wr_monster(monster_type *m_ptr) {
 
 	wr_s32b(m_ptr->related);
 	wr_byte(m_ptr->related_type);
-	wr_s32b(m_ptr->temp);
+	wr_s32b(m_ptr->custom_xp);
 }
 
 /*

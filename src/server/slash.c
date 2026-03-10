@@ -11225,6 +11225,20 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 #endif  // MONSTER_INVENTORY
 				return;
 			}
+			else if (prefix(messagelc, "/mcustomxp")) { /* make the monster currently looked at (NOT the one targetted) grant custom_xp */
+				s16b m_idx;
+				monster_type *m_ptr;
+
+				if (p_ptr->health_who <= 0) {//target_who
+					msg_print(Ind, "No monster looked at.");
+					return; /* no monster targetted */
+				}
+				m_idx = p_ptr->health_who;
+				m_ptr = &m_list[m_idx];
+				m_ptr->custom_xp = atoi(message3);
+				msg_format(Ind, "set custom_xp = %d", m_ptr->custom_xp);
+				return;
+			}
 			else if (prefix(messagelc, "/unown") && !prefix(messagelc, "/unownhou")) { /* clear owner of an item - C. Blue */
 				object_type *o_ptr;
 				if (!tk) {

@@ -553,10 +553,14 @@ extern dun_level *getfloor(struct worldpos *wpos);
 extern int cave_set_feat(worldpos *wpos, int y, int x, int feat);
 extern bool cave_set_feat_live(worldpos *wpos, int y, int x, int feat);
 extern bool cave_set_feat_live_ok(worldpos *wpos, int y, int x, int feat);
+#ifdef DM_MODULES
 extern void custom_cave_set_feat(worldpos *wpos, int y, int x, int feat,
-    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance, s16b custom_lua_newlivefeat, s16b custom_lua_way);
+    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance,
+    s16b custom_lua_newlivefeat, s16b custom_lua_way, s16b custom_lua_spawned);
 extern bool custom_cave_set_feat_live(worldpos *wpos, int y, int x, int feat,
-    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance, s16b custom_lua_newlivefeat, s16b custom_lua_way);
+    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance,
+    s16b custom_lua_newlivefeat, s16b custom_lua_way, s16b custom_lua_spawned);
+#endif
 extern bool cave_force_feat_live(worldpos *wpos, int y, int x, int feat);
 #if defined(ARCADE_SERVER) || defined(DM_MODULES)
 extern int check_feat(worldpos *wpos, int y, int x);
@@ -569,7 +573,7 @@ extern int check_monster_ego(worldpos *wpos, int y, int x);
 extern int check_item_tval(worldpos *wpos, int y, int x);
 extern int check_item_sval(worldpos *wpos, int y, int x);
 extern int custom_place_item_module(worldpos *wpos, int y, int x, int tval, int sval,
-        s16b custom_lua_carrystate, s16b custom_lua_equipstate, s16b custom_lua_destruction, s16b custom_lua_usage);
+        s16b custom_lua_carrystate, s16b custom_lua_equipstate, s16b custom_lua_destruction, s16b custom_lua_usage, s16b custom_lua_spawned);
 extern int place_item_module(worldpos *wpos, int y, int x, int tval, int sval);
 #endif
 extern struct dungeon_type *getdungeon(struct worldpos *wpos);
@@ -1187,8 +1191,8 @@ extern int place_monster_one(struct worldpos *wpos, int y, int x, int r_idx, int
 extern bool place_monster(struct worldpos *wpos, int y, int x, bool slp, bool grp);
 #ifdef DM_MODULES
 extern int place_monster_ego(struct worldpos *wpos, int y, int x, int r_idx, int e_idx, bool slp, bool grp, int clo, int clone_summoning);
-extern int custom_place_monster_ego(struct worldpos *wpos, int y, int x, int r_idx, int e_idx, bool slp, bool grp, int clo, int clone_summoning,
-        s16b custom_lua_death, s16b custom_lua_deletion, s16b custom_lua_awoke, s16b custom_lua_sighted);
+extern int custom_place_monster_ego(struct worldpos *wpos, int y, int x, int r_idx, int e_idx, bool slp, bool grp, int clo, int clone_summoning, s32b custom_xp,
+    s16b custom_lua_death, s16b custom_lua_deletion, s16b custom_lua_awoke, s16b custom_lua_sighted, s16b custom_lua_spawned);
 #endif
 #ifdef RPG_SERVER
 extern bool place_pet(int owner_id, struct worldpos *wpos, int y, int x, int r_idx);

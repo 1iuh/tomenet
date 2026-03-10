@@ -1177,7 +1177,7 @@ static void rd_monster(monster_type *m_ptr) {
 	if (!s_older_than(4, 9, 17)) {
 		rd_s32b(&m_ptr->related);
 		rd_byte(&m_ptr->related_type);
-		rd_s32b(&m_ptr->temp);
+		rd_s32b(&m_ptr->custom_xp);
 	}
 }
 

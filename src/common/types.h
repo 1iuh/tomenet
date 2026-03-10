@@ -2262,7 +2262,7 @@ struct monster_type {
 	s16b custom_lua_sighted;	/* Runs custom lua script on LoS to player (only the 1st time) */
 	//add status effects too, eg slept/feared/...?
 
-	s32b temp;			/* Misc/temp stuff -- unused */
+	s32b custom_xp;			/* Force specific XP reward (0 = disabled ie grant standard XP; use -1 to give 0 XP) */
 };
 
 typedef struct monster_ego monster_ego;

@@ -4236,8 +4236,8 @@ int place_monster_ego(worldpos *wpos, int y, int x, int r_idx, int e_idx, bool s
 	return(0);
 }
 
-int custom_place_monster_ego(worldpos *wpos, int y, int x, int r_idx, int e_idx, bool slp, bool grp, int clo, int clone_summoning,
-    s16b custom_lua_death, s16b custom_lua_deletion, s16b custom_lua_awoke, s16b custom_lua_sighted) {
+int custom_place_monster_ego(worldpos *wpos, int y, int x, int r_idx, int e_idx, bool slp, bool grp, int clo, int clone_summoning, s32b custom_xp,
+    s16b custom_lua_death, s16b custom_lua_deletion, s16b custom_lua_awoke, s16b custom_lua_sighted, s16b custom_lua_spawned) {
 	monster_type *m_ptr;
 	int res;
 
@@ -4245,13 +4245,19 @@ int custom_place_monster_ego(worldpos *wpos, int y, int x, int r_idx, int e_idx,
 	if (!res) {
 		struct cave_type **zcave = getcave(wpos);
 
-		/* Success */
-		m_ptr = &m_list[zcave[y][x].m_idx];
+		if (zcave) {
+			/* Success */
+			m_ptr = &m_list[zcave[y][x].m_idx];
 
-		m_ptr->custom_lua_death = custom_lua_death;
-		m_ptr->custom_lua_deletion = custom_lua_deletion;
-		m_ptr->custom_lua_awoke = custom_lua_awoke;
-		m_ptr->custom_lua_sighted = custom_lua_sighted;
+			m_ptr->custom_lua_death = custom_lua_death;
+			m_ptr->custom_lua_deletion = custom_lua_deletion;
+			m_ptr->custom_lua_awoke = custom_lua_awoke;
+			m_ptr->custom_lua_sighted = custom_lua_sighted;
+
+			/* Note that this parm is not saved to m_ptr, as it's not required anymore */
+			if (custom_lua_spawned) exec_lua(0, format("custom_monster_spawned(%d,%d)", zcave[y][x].m_idx, custom_lua_spawned));
+			m_ptr->custom_xp = custom_xp;
+		}
 	}
 
 	return(res);

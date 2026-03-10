@@ -12259,7 +12259,7 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 	monster_race *r_ptr = race_inf(m_ptr);
 
 	s64b new_exp, new_exp_frac;
-	s64b tmp_exp;
+	s64b tmp_exp, rmexp = r_ptr->mexp;
 	int skill_trauma = (p_ptr->anti_magic || get_skill(p_ptr, SKILL_ANTIMAGIC)) ? 0 : get_skill_scale(p_ptr, SKILL_TRAUMATURGY, 100);
 	bool old_tacit = suppress_message;
 	int apply_exp_Ind[MAX_PLAYERS] = { 0 }, i;
@@ -12537,9 +12537,16 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 		if ((r_ptr->flags1 & RF1_UNIQUE) && p_ptr->r_killed[m_ptr->r_idx] == 1)
 			m_ptr->clone = 90; /* still allow some experience to be gained */
 
+		/* monster grants custom XP? */
+		switch (m_ptr->custom_xp) {
+		case 0: break; /* no, go with standard XP */
+		case -1: rmexp = 0; break; /* give NO XP */
+		default: rmexp = m_ptr->custom_xp; break; /* give custom XP */
+		}
+
 		/* prepare for experience calculation further down */
-		if (m_ptr->level == 0) tmp_exp = r_ptr->mexp;
-		else tmp_exp = r_ptr->mexp * m_ptr->level;
+		if (m_ptr->level == 0) tmp_exp = rmexp;
+		else tmp_exp = rmexp * m_ptr->level;
 
 		/* quest giver died? */
 		if (m_ptr->questor) {
@@ -12548,7 +12555,6 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 					tmp_exp = q_info[m_ptr->quest].questor[m_ptr->questor_idx].exp * m_ptr->level;
 			} else s_printf("QUESTOR DEPRECATED (monster_dead2)\n");
 		}
-
 
 		/* for obtaining statistical IDDC information: */
 		if (l_ptr) l_ptr->monsters_killed++;
@@ -12651,8 +12657,8 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 				/* Never get too much exp off a monster
 				   due to high level difference,
 				   make exception for low exp boosts like "holy jackal" */
-				if (new_exp > r_ptr->mexp * 4 && new_exp > 200) {
-					new_exp = r_ptr->mexp * 4;
+				if (new_exp > rmexp * 4 && new_exp > 200) {
+					new_exp = rmexp * 4;
 					new_exp_frac = 0;
 				}
 
@@ -12686,7 +12692,7 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 			   Otherwise Nether Realm parties are punished.. */
 			//if (!player_is_king(Ind)) party_gain_exp(Ind, p_ptr->party, tmp_exp);
 			//add 2 extra digits to r_ptr->mexp too by multiplying by 100, to match tmp_exp shift
-			if (!(p_ptr->mode & MODE_PVP)) party_gain_exp(Ind, p_ptr->party, tmp_exp, r_ptr->mexp * 100, m_ptr->henc, m_ptr->henc_top, apply_exp_Ind);
+			if (!(p_ptr->mode & MODE_PVP)) party_gain_exp(Ind, p_ptr->party, tmp_exp, rmexp * 100, m_ptr->henc, m_ptr->henc_top, apply_exp_Ind);
 		}
 
 		monster_death_message(Ind, m_idx, dam, note, lore, p_ptr->gain_exp);
@@ -12699,7 +12705,7 @@ bool mon_take_hit(int Ind, int m_idx, int dam, bool *fear, cptr note) {
 		if (monster_death(Ind, m_idx) &&
 		/* note: only our own killing blows count, not party exp! */
 		    p_ptr->solo_reking) {
-			int raw_exp = r_ptr->mexp * (100 - m_ptr->clone) / 100;
+			int raw_exp = rmexp * (100 - m_ptr->clone) / 100;
 
 			/* appropriate depth still factors in! */
 			raw_exp = det_exp_level(raw_exp, p_ptr->lev, getlevel(&p_ptr->wpos));

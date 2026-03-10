@@ -8651,13 +8651,13 @@ int place_item_module(worldpos *wpos, int y, int x, int tval, int sval) {
 	o_ptr->number = 1;
 	o_ptr->marked2 = ITEM_REMOVAL_NEVER; // do NOT move, plx (thx C.Blue)
 	apply_magic(wpos, o_ptr,
-		(in_module(wpos) ? exec_lua(0, format("return adventure_locale(%d, 1)", wpos->wz)) : -2),
-		TRUE, TRUE, FALSE, FALSE, RESF_NONE); // use native depth if not loading as an event
+	    (in_module(wpos) ? exec_lua(0, format("return adventure_locale(%d, 1)", wpos->wz)) : -2),
+	    TRUE, TRUE, FALSE, FALSE, RESF_NONE); // use native depth if not loading as an event
 	return(drop_near(TRUE, 0, o_ptr, -1, wpos, y, x));
 }
 
 int custom_place_item_module(worldpos *wpos, int y, int x, int tval, int sval,
-    s16b custom_lua_carrystate, s16b custom_lua_equipstate, s16b custom_lua_destruction, s16b custom_lua_usage) {
+    s16b custom_lua_carrystate, s16b custom_lua_equipstate, s16b custom_lua_destruction, s16b custom_lua_usage, s16b custom_lua_spawned) {
 	object_type *o_ptr;
 	int res;
 
@@ -8669,6 +8669,9 @@ int custom_place_item_module(worldpos *wpos, int y, int x, int tval, int sval,
 		o_ptr->custom_lua_equipstate = custom_lua_equipstate;
 		o_ptr->custom_lua_destruction = custom_lua_destruction;
 		o_ptr->custom_lua_usage = custom_lua_usage;
+
+		/* Note that this parm is not saved to o_ptr, as it's not required anymore */
+		if (custom_lua_spawned) exec_lua(0, format("custom_object_spawned(%d,%d)", res, custom_lua_spawned));
 	}
 
 	return(res);
@@ -9157,8 +9160,11 @@ bool cave_force_feat_live(worldpos *wpos, int y, int x, int feat) {
 	return(TRUE);
 }
 
+#ifdef DM_MODULES
+/* Added for adventure module loading */
 void custom_cave_set_feat(worldpos *wpos, int y, int x, int feat,
-    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance, s16b custom_lua_newlivefeat, s16b custom_lua_way) {
+    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance,
+    s16b custom_lua_newlivefeat, s16b custom_lua_way, s16b custom_lua_spawned) {
 	cave_type **zcave;
 	int res;
 
@@ -9166,7 +9172,10 @@ void custom_cave_set_feat(worldpos *wpos, int y, int x, int feat,
 	if (!in_bounds_array(y, x)) return;
 
 	res = cave_set_feat(wpos, y, x, feat);
-	if (res) s_printf("cave_set_feat() failed (%d) at [y=%d,x=%d] (%d,%d,%d) feat %d!\n", res, y, x, wpos->wx, wpos->wy, wpos->wz, feat);
+	if (res) {
+		s_printf("custom_cave_set_feat() failed (%d) at [y=%d,x=%d] (%d,%d,%d) feat %d!\n", res, y, x, wpos->wx, wpos->wy, wpos->wz, feat);
+		return;
+	}
 
 	zcave[y][x].custom_lua_tunnel_hand = custom_lua_tunnel_hand;
 	zcave[y][x].custom_lua_tunnel = custom_lua_tunnel;
@@ -9175,21 +9184,30 @@ void custom_cave_set_feat(worldpos *wpos, int y, int x, int feat,
 	zcave[y][x].custom_lua_search_diff_chance = custom_lua_search_diff_chance;
 	zcave[y][x].custom_lua_newlivefeat = custom_lua_newlivefeat;
 	zcave[y][x].custom_lua_way = custom_lua_way;
-}
 
+	/* Note that this parm is not saved to c_ptr, as it's not required anymore */
+	if (custom_lua_spawned) exec_lua(0, format("custom_spawned(%d,%d,%d,%d,%d,%d)", wpos->wx, wpos->wy, wpos->wz, x, y, custom_lua_spawned));
+
+}
+/* Added for adventure module loading */
 bool custom_cave_set_feat_live(worldpos *wpos, int y, int x, int feat,
-    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance, s16b custom_lua_newlivefeat, s16b custom_lua_way) {
+    s16b custom_lua_tunnel_hand, s16b custom_lua_tunnel, s16b custom_lua_search, byte custom_lua_search_diff_minus, byte custom_lua_search_diff_chance,
+    s16b custom_lua_newlivefeat, s16b custom_lua_way, s16b custom_lua_spawned) {
 	cave_type **zcave;
+	int res;
 
 	if (!(zcave = getcave(wpos))) return(FALSE);
 	if (!in_bounds_array(y, x)) return(FALSE);
 
 #if 0
-	if (!cave_set_feat_live(wpos, y, x, feat)) return(FALSE);
+	res = cave_set_feat_live(wpos, y, x, feat);
 #else
-	if (!cave_force_feat_live(wpos, y, x, feat)) return(FALSE);
+	res = cave_force_feat_live(wpos, y, x, feat);
 #endif
-	if (!(zcave = getcave(wpos))) return(TRUE); //we did set the feat!
+	if (res) {
+		s_printf("custom_cave_set_feat_live() failed (%d) at [y=%d,x=%d] (%d,%d,%d) feat %d!\n", res, y, x, wpos->wx, wpos->wy, wpos->wz, feat);
+		return(FALSE);
+	}
 
 	zcave[y][x].custom_lua_tunnel_hand = custom_lua_tunnel_hand;
 	zcave[y][x].custom_lua_tunnel = custom_lua_tunnel;
@@ -9199,9 +9217,12 @@ bool custom_cave_set_feat_live(worldpos *wpos, int y, int x, int feat,
 	zcave[y][x].custom_lua_newlivefeat = custom_lua_newlivefeat;
 	zcave[y][x].custom_lua_way = custom_lua_way;
 
+	/* Note that this parm is not saved to c_ptr, as it's not required anymore */
+	if (custom_lua_spawned) exec_lua(0, format("custom_spawned(%d,%d,%d,%d,%d,%d)", wpos->wx, wpos->wy, wpos->wz, x, y, custom_lua_spawned));
+
 	return(TRUE);
 }
-
+#endif
 
 
 /*
