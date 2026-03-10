@@ -9806,6 +9806,9 @@ extern int PlayerUID;
 #define PEVF_INDOORS_00		0x00000080U /* the 0,0 event is classified as indoors, so vampires don't get sun burn */
 #define PEVF_ICKY_OK		0x00000100U /* allow wpos changes onto CAVE_ICKY grid */
 #define PEVF_STCK_OK		0x00000200U /* allow wpos changes onto CAVE_STCK grid */
+/* Maybe reserve range		0x00001000U ... (ie 20 flags range)
+				0x80000000U for potential usage within custom lua functions for event/adventure module processing,
+				eg to track down some progress, eg quaffing only once per player from pseudo "level-up fountains" or stuff like that */
 
 /* for achievements (top PvP mode rank) - C. Blue */
 #define ACHV_NONE		0
