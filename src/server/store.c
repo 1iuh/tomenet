@@ -5137,6 +5137,12 @@ void store_examine(int Ind, int item) {
  */
 static bool leave_store = FALSE;
 
+#ifndef USE_MANG_HOUSE_ONLY
+/* Remote fixed-house UI session marker base (store_action = base + house index) */
+#define STORE_ACTION_REMOTE_FIXED_HOME_BASE 9001
+#define SHARED_VAULT_HOUSE_TAG "shared_vault"
+#endif
+
 
 /*
  * Enter a store, and interact with it.
@@ -5867,13 +5873,18 @@ void store_init(store_type *st_ptr) {
    However, we're also called when a store is full - in which case we already stand on the store grid, but store_num is still -1,
    so if USE_SOUND_2010 is defined we need to skip the sfx checks that try to read a particular store's info. */
 void store_kick(int Ind, bool say) {
+	player_type *p_ptr = Players[Ind];
 #if defined(PLAYER_STORES) || defined(USE_SOUND_2010)
 	int i;
-	player_type *p_ptr = Players[Ind];
 #endif
+	bool from_fixed_house = FALSE;
 
 	if (say) msg_print(Ind, "The shopkeeper asks you to leave the store once.");
 	//store_leave(Ind);
+
+#ifndef USE_MANG_HOUSE_ONLY
+	if (is_fixed_house_session(p_ptr)) from_fixed_house = TRUE;
+#endif
 
 #ifdef USE_SOUND_2010
 	if (p_ptr->sfx_store) {
@@ -5907,9 +5918,9 @@ void store_kick(int Ind, bool say) {
 	i = p_ptr->store_num; /* (handle_store_leave() erases p_ptr->store_num) */
 	/* Player stores aren't entered such as normal stores,
 	   instead, the customer just stays in front of it. */
-	if (i > -2)
+	if (i > -2 && !from_fixed_house)
 #endif
-	teleport_player_force(Ind, 1);
+	if (!from_fixed_house) teleport_player_force(Ind, 1);
 }
 /* Just silently exits store in case we are in one.
    No teleportation needed because we're only called if player wants to move anyway, or if he leaves the game. */
@@ -5999,9 +6010,16 @@ void store_exec_command(int Ind, int action, int item, int item2, int amt, int g
 
 #ifndef USE_MANG_HOUSE_ONLY
 
-/* Remote fixed-house UI session marker base (store_action = base + house index) */
-#define STORE_ACTION_REMOTE_FIXED_HOME_BASE 9001
-#define SHARED_VAULT_HOUSE_TAG "shared_vault"
+/* Returns TRUE if the player's current store session was opened via do_cmd_fixed_house
+   (ie a remote fixed house identified by its shared-vault TAG). */
+bool is_fixed_house_session(player_type *p_ptr) {
+	int h_idx = p_ptr->store_action - STORE_ACTION_REMOTE_FIXED_HOME_BASE;
+
+	if (h_idx >= 0 && h_idx < num_houses &&
+	    !strcmp(houses[h_idx].tag, SHARED_VAULT_HOUSE_TAG))
+		return(TRUE);
+	return(FALSE);
+}
 
 static bool prepare_trad_house_for_store(house_type *h_ptr, int h_idx, cptr phase) {
 	if (!(h_ptr->flags & HF_TRAD)) return(FALSE);

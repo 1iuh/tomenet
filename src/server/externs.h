@@ -2066,6 +2066,9 @@ extern void home_item_increase(house_type *h_ptr, int item, int num);
 extern void home_item_optimize(house_type *h_ptr, int item);
 //extern void display_house_inventory(int Ind, house_type *h_ptr);
 extern void display_trad_house(int Ind, house_type *h_ptr);
+#ifndef USE_MANG_HOUSE_ONLY
+extern bool is_fixed_house_session(player_type *p_ptr);
+#endif
 extern void display_house_entry(int Ind, int pos, house_type *h_ptr);
 
 extern void handle_store_leave(int Ind);

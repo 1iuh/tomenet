@@ -13986,13 +13986,19 @@ static int Receive_store_leave(int ind) {
 
 	/* Update store info */
 	if (p_ptr->store_num != -1) {
+		bool skip_teleport = FALSE;
+#ifndef USE_MANG_HOUSE_ONLY
+		/* Don't teleport if player entered via fixed remote house (eg shared vault) */
+		if (is_fixed_house_session(p_ptr)) skip_teleport = TRUE;
+#endif
 #ifdef PLAYER_STORES
 		/* Player stores aren't entered such as normal stores,
 		   instead, the customer just stays in front of it. */
-		if (p_ptr->store_num > -2)
+		if (p_ptr->store_num <= -2) skip_teleport = TRUE;
 #endif
 		/* Hack -- don't stand in the way */
-		teleport_player_force(player, 1); //(note that this causes the leave-sfx too, for non-pstores)
+		if (!skip_teleport)
+			teleport_player_force(player, 1); //(note that this causes the leave-sfx too, for non-pstores)
 		handle_store_leave(player);
 	}
 
