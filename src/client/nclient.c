@@ -8962,3 +8962,10 @@ int next_frame() {
 
 	return(us);
 }
+
+/* Request server to open house/store UI regardless of player's location */
+int Send_request_store_open(void) {
+	int n;
+	if ((n = Packet_printf(&wbuf, "%c", PKT_REQUEST_STORE_OPEN)) <= 0) return(n);
+	return(1);
+}

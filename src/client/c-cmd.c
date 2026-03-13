@@ -8442,6 +8442,7 @@ void cmd_party(void) {
 	char i;
 	char buf[80];
 	bool inkey_msg_old = inkey_msg;
+	bool open_common_vault = FALSE;
 
 	/* suppress hybrid macros */
 	inkey_msg = TRUE;
@@ -8492,6 +8493,8 @@ void cmd_party(void) {
 			Term_putstr(5, 14, -1, TERM_WHITE, "(\377RA\377w) Declare war on player/party (not recommended!)");
 			Term_putstr(5, 15, -1, TERM_WHITE, "(\377gP\377w) Make peace with player");
 		}
+
+		Term_putstr(40, 14, -1, TERM_WHITE, "(\377yv\377w) Enter the Shared Vault");
 
 		/* Show current party status */
 		if (is_newer_than(&server_version, 4, 4, 7, 0, 0, 0)) {
@@ -8606,6 +8609,9 @@ void cmd_party(void) {
 		} else if (i == 'e' && is_newer_than(&server_version, 4, 5, 2, 0, 0, 0)) {
 			/* Set guild flags/options */
 			cmd_guild_options();
+		} else if (i == 'v') {
+			open_common_vault = TRUE;
+			break;
 		}
 
 		/* Oops */
@@ -8626,6 +8632,8 @@ void cmd_party(void) {
 
 	/* restore responsiveness to hybrid macros */
 	inkey_msg = inkey_msg_old;
+
+	if (open_common_vault) Send_request_store_open();
 
 	/* Flush any events */
 	Flush_queue();

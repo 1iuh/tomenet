@@ -82,6 +82,9 @@
 #include "angband.h"
 #include "netserver.h"
 
+/* Allow opening fixed house UI from network handler */
+extern void do_cmd_fixed_house(int Ind);
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -129,6 +132,31 @@ static bool bad_dir1(int Ind, signed char *dir) {
 		*dir = 5;
 	}
 	return(FALSE);
+}
+
+/* Handle client request to open house/store UI anywhere (no location check) */
+static int Receive_request_store_open(int ind) {
+	connection_t *connp = Conn[ind];
+	player_type *p_ptr = NULL;
+	char ch;
+	int n, Ind = 0;
+
+	if ((n = Packet_scanf(&connp->r, "%c", &ch)) <= 0) {
+		if (n == -1) Destroy_connection(ind, "read error");
+		return(n);
+	}
+
+	if (connp->id != -1) {
+		Ind = GetInd[connp->id];
+		p_ptr = Players[Ind];
+	}
+
+	if (!Ind || !p_ptr) return(1);
+
+	/* Open fixed house UI regardless of player location */
+	do_cmd_fixed_house(Ind);
+
+	return(1);
 }
 #define bad_dir2(d)	((d)<128 || (d)>137)	/* dir + 128; used for manual target positioning */
 //#define bad_dir3(d)	((d)<-1 || (d)>9+1)	/* used for MKEY_SCHOOL activations */
@@ -410,6 +438,7 @@ static void Init_receive(void) {
 	playing_receive[PKT_RAW_KEY]		= Receive_raw_key;
 	playing_receive[PKT_STORE_EXAMINE]	= Receive_store_examine;
 	playing_receive[PKT_STORE_CMD]		= Receive_store_command;
+	playing_receive[PKT_REQUEST_STORE_OPEN] 	= Receive_request_store_open;
 	playing_receive[PKT_PING]		= Receive_ping;
 
 	/* New stuff for v4.4.1 or 4.4.0d (dual-wield & co) - C. Blue */

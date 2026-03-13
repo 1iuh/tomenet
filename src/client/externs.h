@@ -1007,6 +1007,7 @@ extern int Send_request_amt(int id, int num);
 extern int Send_request_num(int id, int num);
 extern int Send_request_str(int id, char *str);
 extern int Send_request_cfr(int id, int cfr);
+extern int Send_request_store_open(void);
 extern bool apply_auto_inscriptions_aux(int slot, int insc_idx, bool force);
 extern int Send_client_setup(void);
 extern int Send_audio(void);

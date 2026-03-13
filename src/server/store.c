@@ -5998,6 +5998,111 @@ void store_exec_command(int Ind, int action, int item, int item2, int amt, int g
 }
 
 #ifndef USE_MANG_HOUSE_ONLY
+
+/* Remote fixed-house UI session marker base (store_action = base + house index) */
+#define STORE_ACTION_REMOTE_FIXED_HOME_BASE 9001
+#define SHARED_VAULT_HOUSE_TAG "shared_vault"
+
+static bool prepare_trad_house_for_store(house_type *h_ptr, int h_idx, cptr phase) {
+	if (!(h_ptr->flags & HF_TRAD)) return(FALSE);
+
+	if (!h_ptr->dna) {
+		return(FALSE);
+	}
+
+	if (h_ptr->stock_size <= 0 || h_ptr->stock_size > STORE_INVEN_MAX) {
+		return(FALSE);
+	}
+
+	if (h_ptr->stock_num < 0 || h_ptr->stock_num > h_ptr->stock_size) {
+		if (h_ptr->stock_num < 0) h_ptr->stock_num = 0;
+		if (h_ptr->stock_num > h_ptr->stock_size) h_ptr->stock_num = h_ptr->stock_size;
+	}
+
+	if (!h_ptr->stock) {
+		C_MAKE(h_ptr->stock, h_ptr->stock_size, object_type);
+	}
+
+	return(TRUE);
+}
+
+static house_type *get_active_trad_house(int Ind, int *h_idx) {
+	player_type *p_ptr = Players[Ind];
+
+	if (!p_ptr) return(NULL);
+
+	if (p_ptr->store_action >= STORE_ACTION_REMOTE_FIXED_HOME_BASE &&
+	    p_ptr->store_action < STORE_ACTION_REMOTE_FIXED_HOME_BASE + num_houses) {
+		*h_idx = p_ptr->store_action - STORE_ACTION_REMOTE_FIXED_HOME_BASE;
+		if (*h_idx < 0 || *h_idx >= num_houses) return(NULL);
+		if (!prepare_trad_house_for_store(&houses[*h_idx], *h_idx, "get_active_remote")) return(NULL);
+		return(&houses[*h_idx]);
+	}
+
+	*h_idx = pick_house(&p_ptr->wpos, p_ptr->py, p_ptr->px);
+	if (*h_idx == -1) return(NULL);
+	if (!prepare_trad_house_for_store(&houses[*h_idx], *h_idx, "get_active_local")) return(NULL);
+
+	return(&houses[*h_idx]);
+}
+
+static house_type *create_remote_trad_house(int Ind, int *h_idx) {
+	house_type *h_ptr;
+
+	if ((house_alloc - num_houses) < 32) {
+		GROW(houses, house_alloc, house_alloc + 512, house_type);
+		GROW(houses_bak, house_alloc, house_alloc + 512, house_type);
+		house_alloc += 512;
+	}
+
+	*h_idx = num_houses;
+	h_ptr = &houses[*h_idx];
+	WIPE(h_ptr, house_type);
+
+	h_ptr->flags = HF_TRAD | HF_RECT;
+	h_ptr->x = 0;
+	h_ptr->y = 0;
+	h_ptr->dx = 0;
+	h_ptr->dy = 0;
+	h_ptr->coords.rect.width = 1;
+	h_ptr->coords.rect.height = 1;
+	h_ptr->wpos.wx = 0;
+	h_ptr->wpos.wy = 0;
+	h_ptr->wpos.wz = 0;
+
+	MAKE(h_ptr->dna, struct dna_type);
+	h_ptr->dna->creator = 0;
+	h_ptr->dna->mode = 0;
+	h_ptr->dna->owner = 0;
+	h_ptr->dna->owner_type = OT_PLAYER;
+	h_ptr->dna->a_flags = 0;
+	h_ptr->dna->min_level = 0;
+	h_ptr->dna->price = 0;
+
+	h_ptr->stock_size = STORE_INVEN_MAX;
+	h_ptr->stock_num = 0;
+	C_MAKE(h_ptr->stock, h_ptr->stock_size, object_type);
+	strcpy(h_ptr->tag, SHARED_VAULT_HOUSE_TAG);
+
+	num_houses++;
+
+	return(h_ptr);
+}
+
+static house_type *find_remote_trad_house(int *h_idx) {
+	int i;
+
+	for (i = 0; i < num_houses; i++) {
+		if (!(houses[i].flags & HF_TRAD)) continue;
+		if (strcmp(houses[i].tag, SHARED_VAULT_HOUSE_TAG)) continue;
+
+		*h_idx = i;
+		return(&houses[i]);
+	}
+
+	return(NULL);
+}
+
 /*
  * TomeNET functions for 'Vanilla-like' houses.		- Jir -
  *
@@ -6639,10 +6744,8 @@ void home_sell(int Ind, int item, int amt) {
 		return;
 	}
 
-	h_idx = pick_house(&p_ptr->wpos, p_ptr->py, p_ptr->px);
-	if (h_idx == -1) return;
-
-	h_ptr = &houses[h_idx];
+	h_ptr = get_active_trad_house(Ind, &h_idx);
+	if (!h_ptr) return;
 
 
 	/* You can't sell 0 of something. */
@@ -6874,10 +6977,8 @@ void home_purchase(int Ind, int item, int amt) {
 	/* This should never happen */
 	if (p_ptr->store_num != STORE_HOME && p_ptr->store_num != STORE_HOME_DUN) return;
 
-	h_idx = pick_house(&p_ptr->wpos, p_ptr->py, p_ptr->px);
-	if (h_idx == -1) return;
-
-	h_ptr = &houses[h_idx];
+	h_ptr = get_active_trad_house(Ind, &h_idx);
+	if (!h_ptr) return;
 
 	/* Empty? */
 	if (h_ptr->stock_num <= 0) {
@@ -7159,10 +7260,8 @@ void home_examine(int Ind, int item) {
 	/* This should never happen */
 	if (p_ptr->store_num != STORE_HOME && p_ptr->store_num != STORE_HOME_DUN) return;
 
-	h_idx = pick_house(&p_ptr->wpos, p_ptr->py, p_ptr->px);
-	if (h_idx == -1) return;
-
-	h_ptr = &houses[h_idx];
+	h_ptr = get_active_trad_house(Ind, &h_idx);
+	if (!h_ptr) return;
 
 	/* Empty? */
 	if (h_ptr->stock_num <= 0) {
@@ -7205,10 +7304,8 @@ void home_extend(int Ind) {
 	/* This should never happen */
 	if (p_ptr->store_num != STORE_HOME && p_ptr->store_num != STORE_HOME_DUN) return;
 
-	h_idx = pick_house(&p_ptr->wpos, p_ptr->py, p_ptr->px);
-	if (h_idx == -1) return;
-
-	h_ptr = &houses[h_idx];
+	h_ptr = get_active_trad_house(Ind, &h_idx);
+	if (!h_ptr) return;
 
 	/* Already too large? */
 	if (h_ptr->stock_size >= STORE_INVEN_MAX) {
@@ -7420,6 +7517,7 @@ void do_cmd_trad_house(int Ind) {
 
 	/* Save the store number */
 	p_ptr->store_num = STORE_HOME;
+	p_ptr->store_action = 0;
 
 	/* Set the timer */
 	/* XXX well, don't kick her out of her own house :) */
@@ -7429,6 +7527,33 @@ void do_cmd_trad_house(int Ind) {
 	display_trad_house(Ind, h_ptr);
 
 	/* Do not leave */
+	leave_store = FALSE;
+}
+
+/* Open a fixed traditional house UI from anywhere */
+void do_cmd_fixed_house(int Ind) {
+	player_type *p_ptr = Players[Ind];
+	house_type *h_ptr;
+	int h_idx;
+
+	if (!p_ptr) return;
+	if (p_ptr->wpos.wz != 0) {
+		msg_print(Ind, "\377yThe Shared Vault can only be accessed on the surface.");
+		return;
+	}
+
+	h_ptr = find_remote_trad_house(&h_idx);
+	if (!h_ptr) {
+		h_ptr = create_remote_trad_house(Ind, &h_idx);
+		if (!h_ptr) return;
+	}
+	if (!prepare_trad_house_for_store(h_ptr, h_idx, "enter_shared")) return;
+
+	p_ptr->store_num = STORE_HOME;
+	p_ptr->store_action = STORE_ACTION_REMOTE_FIXED_HOME_BASE + h_idx;
+	p_ptr->tim_store = 30000;
+
+	display_trad_house(Ind, h_ptr);
 	leave_store = FALSE;
 }
 
