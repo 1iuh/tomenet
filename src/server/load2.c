@@ -1253,7 +1253,8 @@ static void rd_global_lore(int r_idx) {
 static errr rd_store(store_type *st_ptr) {
 	int j;
 
-	byte num;
+	byte num_old;
+	s16b num;
 	u16b own;
 
 
@@ -1261,7 +1262,12 @@ static errr rd_store(store_type *st_ptr) {
 	rd_s32b(&st_ptr->store_open);
 	rd_s16b(&st_ptr->insult_cur);
 	rd_u16b(&own);
-	rd_byte(&num);
+	if (s_older_than(4, 9, 25)) {
+		rd_byte(&num_old);
+		num = num_old;
+	} else {
+		rd_s16b(&num);
+	}
 	rd_s16b(&st_ptr->good_buy);
 	rd_s16b(&st_ptr->bad_buy);
 

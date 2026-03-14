@@ -72,6 +72,16 @@ static bool player_store_handle_purchase(int Ind, object_type *o_ptr, object_typ
 
 #define MAX_COMMENT_1	6
 
+static s32b home_extend_price(int stock_size, bool has_moat) {
+	s32b next_size = stock_size + 1;
+	s32b cost = 100 + next_size * 2 + (next_size * next_size) / 400;
+
+	if (has_moat) cost = (cost * 5) / 4;
+	if (cost < 100) cost = 100;
+
+	return(cost);
+}
+
 static cptr comment_1[MAX_COMMENT_1] = {
 	"Okay.",
 	"Fine.",
@@ -7334,11 +7344,7 @@ void home_extend(int Ind) {
 #if 0 /* can go inconsistent pretty quickly (between different initial house sizes) */
 	cost = (h_ptr->dna->price * 2) / (h_ptr->stock_size + 1);
 #else
-	cost = house_price_area(h_ptr->stock_size + 1, (h_ptr->flags & HF_MOAT), FALSE) - h_ptr->dna->price;
-	/* paranoia, in case a list house really has its initial_house_price()'s
-	   random() price factor big enough to not get compensated by the first-time
-	   extension's value (shouldn't happen): */
-	if (cost < 1000) cost = 1000;
+	cost = home_extend_price(h_ptr->stock_size, (h_ptr->flags & HF_MOAT));
 #endif
 
 	if (p_ptr->au < cost) {

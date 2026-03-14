@@ -495,7 +495,7 @@ static void wr_store(store_type *st_ptr) {
 //	wr_byte(st_ptr->owner);
 
 	/* Save the stock size */
-	wr_byte(st_ptr->stock_num);
+	wr_s16b(st_ptr->stock_num);
 
 	/* Save the "haggle" info */
 	wr_s16b(st_ptr->good_buy);

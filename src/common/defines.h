@@ -105,7 +105,7 @@
 /* For savefile purpose only */
 #define SF_VERSION_MAJOR	4
 #define SF_VERSION_MINOR	9
-#define SF_VERSION_PATCH	24
+#define SF_VERSION_PATCH	25
 #define SF_VERSION_EXTRA	0 /* <- not used in version checks! */
 
 /* For quests savefile purpose only */
@@ -2021,7 +2021,7 @@
 #define MAX_STORE_OWNERS	6	/* Max size for st_ptr->owners[] */
 #define MAX_STORE_ACTIONS	9	/* Max # of different store actions from ba_info.txt/bldg.c */
 
-#define STORE_INVEN_MAX		120		/* Max number of discrete objs in inven [48] */
+#define STORE_INVEN_MAX		1024		/* Max number of discrete objs in inven [48] */
 #define STORE_CHOICES		64		/* Number of items to choose stock from (defined in st_info.txt) */
 #define STORE_OBJ_LEVEL		5		/* Magic Level for normal stores */
 #define STORE_TURNOVER_DIV	3		/* Normal shop turnover, per day (stock_size / this = randint(amount of items to turnover)) */

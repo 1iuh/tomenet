@@ -2473,7 +2473,7 @@ struct store_type {
 
 	s32b last_visit;		/* Last visited on this turn */
 
-	byte stock_num;			/* Stock -- Number of entries */
+	s16b stock_num;			/* Stock -- Number of entries */
 	s16b stock_size;		/* Stock -- Total Size of Array */
 	object_type *stock;		/* Stock -- Actual stock items */
 	

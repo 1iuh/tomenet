@@ -4494,25 +4494,34 @@ int Receive_store_action(void) {
 
 int Receive_store(void) {
 	int n, price;
-	char ch, pos, name[ONAME_LEN], powers[MAX_CHARS_WIDE];
+	char ch, pos_old, name[ONAME_LEN], powers[MAX_CHARS_WIDE];
 	byte attr, tval, sval;
+	u16b pos;
 	s16b wgt, num, pval;
 
-	if (is_atleast(&server_version, 4, 7, 3, 0, 0, 0)) {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%s", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval, &powers)) <= 0)
+	if (is_atleast(&server_version, 4, 9, 25, 0, 0, 0)) {
+		if ((n = Packet_scanf(&rbuf, "%c%hu%c%hd%hd%d%S%c%c%hd%s", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval, &powers)) <= 0)
 			return(n);
+	} else if (is_atleast(&server_version, 4, 7, 3, 0, 0, 0)) {
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%s", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval, &powers)) <= 0)
+			return(n);
+		pos = (byte)pos_old;
 	} else if (is_newer_than(&server_version, 4, 4, 7, 0, 0, 0)) {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval)) <= 0)
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval)) <= 0)
 			return(n);
+		pos = (byte)pos_old;
 	} else {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%s%c%c%hd", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval)) <= 0)
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%s%c%c%hd", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval)) <= 0)
 			return(n);
+		pos = (byte)pos_old;
 	}
+
+	if (pos >= STORE_INVEN_MAX) return(1);
 
 	/* If we had store_last_item active and the item we just received is in its position but apparently a different item, clear store_last_item.
 	   Ie happens if we buy/steal the last item of a stack in a store slot.
            Note however that this method fails for macros without \w waits, as the macro might already execute the next get_stock() before this inven packet actually arrives to reset store_last_item to -1! */
-	if (pos == store_last_item && (sval != store_last_item_sval || tval != store_last_item_tval)) store_last_item = -1;
+	if ((int)pos == store_last_item && (sval != store_last_item_sval || tval != store_last_item_tval)) store_last_item = -1;
 
 	store.stock[(int)pos].tval = tval;
 	store.stock[(int)pos].sval = sval;
@@ -4534,36 +4543,46 @@ int Receive_store(void) {
 
 int Receive_store_wide(void) {
 	int n, price;
-	char ch, pos, name[ONAME_LEN];
+	char ch, pos_old, name[ONAME_LEN];
 	byte attr, tval, sval;
+	u16b pos;
 	s16b wgt, num, pval;
 	s16b xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9;
 	byte xtra1b, xtra2b, xtra3b, xtra4b, xtra5b, xtra6b, xtra7b, xtra8b, xtra9b;
 
-	if (is_newer_than(&server_version, 4, 7, 0, 0, 0, 0)) {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
+	if (is_atleast(&server_version, 4, 9, 25, 0, 0, 0)) {
+		if ((n = Packet_scanf(&rbuf, "%c%hu%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
 		    &xtra1, &xtra2, &xtra3, &xtra4, &xtra5, &xtra6, &xtra7, &xtra8, &xtra9)) <= 0)
 			return(n);
+	} else if (is_newer_than(&server_version, 4, 7, 0, 0, 0, 0)) {
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
+		    &xtra1, &xtra2, &xtra3, &xtra4, &xtra5, &xtra6, &xtra7, &xtra8, &xtra9)) <= 0)
+			return(n);
+		pos = (byte)pos_old;
 	} else if (is_newer_than(&server_version, 4, 4, 7, 0, 0, 0)) {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%c%c%c%c%c%c%c%c%c", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%S%c%c%hd%c%c%c%c%c%c%c%c%c", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
 		    &xtra1b, &xtra2b, &xtra3b, &xtra4b, &xtra5b, &xtra6b, &xtra7b, &xtra8b, &xtra9b)) <= 0)
 			return(n);
+		pos = (byte)pos_old;
 		xtra1 = (s16b)xtra1b; xtra2 = (s16b)xtra2b; xtra3 = (s16b)xtra3b;
 		xtra4 = (s16b)xtra4b; xtra5 = (s16b)xtra5b; xtra6 = (s16b)xtra6b;
 		xtra7 = (s16b)xtra7b; xtra8 = (s16b)xtra8b; xtra9 = (s16b)xtra9b;
 	} else {
-		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%s%c%c%hd%c%c%c%c%c%c%c%c%c", &ch, &pos, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
+		if ((n = Packet_scanf(&rbuf, "%c%c%c%hd%hd%d%s%c%c%hd%c%c%c%c%c%c%c%c%c", &ch, &pos_old, &attr, &wgt, &num, &price, name, &tval, &sval, &pval,
 		    &xtra1b, &xtra2b, &xtra3b, &xtra4b, &xtra5b, &xtra6b, &xtra7b, &xtra8b, &xtra9b)) <= 0)
 			return(n);
+		pos = (byte)pos_old;
 		xtra1 = (s16b)xtra1b; xtra2 = (s16b)xtra2b; xtra3 = (s16b)xtra3b;
 		xtra4 = (s16b)xtra4b; xtra5 = (s16b)xtra5b; xtra6 = (s16b)xtra6b;
 		xtra7 = (s16b)xtra7b; xtra8 = (s16b)xtra8b; xtra9 = (s16b)xtra9b;
 	}
 
+	if (pos >= STORE_INVEN_MAX) return(1);
+
 	/* If we had store_last_item active and the item we just received is in its position but apparently a different item, clear store_last_item.
 	   Ie happens if we buy/steal the last item of a stack in a store slot.
            Note however that this method fails for macros without \w waits, as the macro might already execute the next get_stock() before this inven packet actually arrives to reset store_last_item to -1! */
-	if (pos == store_last_item && (sval != store_last_item_sval || tval != store_last_item_tval)) store_last_item = -1;
+	if ((int)pos == store_last_item && (sval != store_last_item_sval || tval != store_last_item_tval)) store_last_item = -1;
 
 	store.stock[(int)pos].tval = tval;
 	store.stock[(int)pos].sval = sval;
