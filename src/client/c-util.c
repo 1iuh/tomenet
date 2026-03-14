@@ -10370,7 +10370,7 @@ void auto_inscriptions(void) {
 				/* hack: remove leading/trailing wild cards since they are obsolete.
 				   Especially trailing ones currently make it not work. */
 				while (*buf_ptr == '#') buf_ptr++;
-				while (*(buf_ptr + strlen(buf_ptr) - 1) == '#') *(buf_ptr + strlen(buf_ptr) - 1) = '\0';
+				while (*buf_ptr && *(buf_ptr + strlen(buf_ptr) - 1) == '#') *(buf_ptr + strlen(buf_ptr) - 1) = '\0';
 			}
 
 //INTEGRATED_SELECTOR: - 2

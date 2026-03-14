@@ -2524,20 +2524,119 @@ static char *ai_fgets(char *buf, int len, FILE *fp) {
 	return(buf);
 }
 
+/* Read one auto-inscription entry from disk into temporary fields.
+   Returns 0 on clean EOF before the next entry, 1 on success, -1 on broken/truncated data. */
+static int ai_read_autoinscription_entry(FILE *fp, int version,
+	char *match, bool *force, char *tag,
+	bool *ignore, bool *autopickup, bool *autodestroy,
+	bool *subinven, bool *disabled) {
+	char buf[1024], *bufptr;
+	int tmp;
+	char *wc;
+
+	*force = FALSE;
+	*ignore = FALSE;
+	*autopickup = FALSE;
+	*autodestroy = FALSE;
+	*subinven = FALSE;
+	*disabled = FALSE;
+
+	/* Read matching string first, so plain EOF stops loading cleanly. */
+	if (version < 5) {
+		if (ai_fgets(buf, AUTOINS_MATCH_LEN + 1, fp) == NULL) return(0); /* +1 to accommodate prefixed '!' in older versions */
+		bufptr = buf;
+		if (*bufptr == '!') {
+			*force = TRUE;
+			bufptr++;
+		} else bufptr[AUTOINS_MATCH_LEN - 1] = 0;
+	} else {
+		if (ai_fgets(buf, AUTOINS_MATCH_LEN, fp) == NULL) return(0);
+		bufptr = buf;
+	}
+
+	strcpy(match, bufptr);
+
+	/* Old version (v1, before version tag was introduced): convert '?' wildcard to '#'. */
+	if (version == 1)
+		while ((wc = strchr(match, '?'))) *wc = '#';
+
+	/* Tag must always be present once an entry starts. */
+	if (ai_fgets(tag, AUTOINS_TAG_LEN, fp) == NULL) return(-1);
+
+	if (version < 5) {
+		/* Older file formats stored flags as separate numeric lines. */
+		if (version >= 3) {
+			if (ai_fgets(buf, 5, fp) == NULL) return(-1);
+			tmp = atoi(buf);
+			if (tmp >= 2) {
+				*ignore = TRUE;
+				tmp -= 2;
+			}
+			*autopickup = (tmp != 0);
+
+			if (ai_fgets(buf, 5, fp) == NULL) return(-1);
+			*autodestroy = (atoi(buf) != 0);
+		}
+
+		if (version >= 4) {
+			if (ai_fgets(buf, 5, fp) == NULL) return(-1);
+			*subinven = (atoi(buf) != 0);
+			if (ai_fgets(buf, 5, fp) == NULL) return(-1);
+			*disabled = (atoi(buf) != 0);
+		}
+	} else {
+		char aif, aiidp, ais, aid;
+		int res;
+
+		if (ai_fgets(buf, MAX_CHARS, fp) == NULL) return(-1);
+		res = sscanf(buf, "  %c,%c,%c,%c\n", &aif, &aiidp, &ais, &aid);
+		if (res != 4) return(-1);
+
+		*force = (aif == 'F');
+		switch (aiidp) {
+		case 'i': *ignore = TRUE; break;
+		case 'a': *autopickup = TRUE; break;
+		case 'A': *autodestroy = TRUE; break;
+		}
+		*subinven = (ais == 'b');
+		*disabled = (aid == 'X');
+	}
+
+	return(1);
+}
+
+#ifdef REGEX_SEARCH
+static void ai_validate_autoinscription_regex(int idx) {
+	int ires;
+	regex_t re_src;
+	char *regptr;
+
+	regptr = auto_inscription_match[idx];
+	auto_inscription_invalid[idx] = FALSE;
+	if (regptr[0] != '$') return;
+
+	regptr++;
+	ires = regcomp(&re_src, regptr, REG_EXTENDED | REG_ICASE);
+	if (ires != 0) {
+		auto_inscription_invalid[idx] = TRUE;
+		c_msg_format("\377oInvalid regular expression in auto-inscription #%d.", idx + 1);
+		return;
+	}
+
+	regfree(&re_src);
+}
+#endif
+
 /* Load Auto-Inscription file (*.ins) - C. Blue
    Returns TRUE if filename was found and loaded at least one inscription entry
    (even partially, if some of it was corrupt/missing) from it, else FALSE. */
 bool load_auto_inscriptions(cptr name) {
 	FILE *fp;
-	char buf[1024], *bufptr;
+	char buf[1024];
 	char file_name[256], vtag[7];
-	int i, c, j, c_eff, version, vmaj, vmin, vpatch, tmp;
-	bool replaced, force, loaded_something = FALSE;
-#ifdef REGEX_SEARCH
-	int ires = -999;
-	regex_t re_src;
-	char *regptr;
-#endif
+	char match[AUTOINS_MATCH_LEN], tag[AUTOINS_TAG_LEN];
+	int i, c, j, c_eff, version, vmaj = 0, vmin = 0, vpatch = 0, entry_status;
+	bool force, ignore, autopickup, autodestroy, subinven, disabled, loaded_something = FALSE;
 
 	strncpy(file_name, name, 249);
 	file_name[249] = '\0';
@@ -2595,119 +2694,39 @@ bool load_auto_inscriptions(cptr name) {
 	/* load inscriptions (2 lines each) */
 	c = 0; /* current internal auto-inscription slot to set */
 	for (i = 0; i < MAX_AUTO_INSCRIPTIONS; i++) {
-		replaced = FALSE;
-		force = FALSE;
+		entry_status = ai_read_autoinscription_entry(fp, version,
+			match, &force, tag,
+			&ignore, &autopickup, &autodestroy,
+			&subinven, &disabled);
+		if (entry_status == 0) break;
+		if (entry_status < 0) break;
 
-		/* try to read a match */
-		if (version < 5) {
-			if (ai_fgets(buf, AUTOINS_MATCH_LEN + 1, fp) == NULL) break; /* +1 to accomodate for prefixed '!' in older versions */
-			bufptr = buf;
-			if (*bufptr == '!') {
-				force = TRUE;
-				bufptr++;
-			} else bufptr[AUTOINS_MATCH_LEN - 1] = 0;
-		} else {
-			if (ai_fgets(buf, AUTOINS_MATCH_LEN, fp) == NULL) break;
-			bufptr = buf;
-		}
-
-		/* skip empty matches */
-		if (*bufptr == 0) {
-			/* try to read according tag */
-			if (ai_fgets(buf, AUTOINS_TAG_LEN, fp) == NULL) break;
-			if (version < 5) {
-				/* try to read automation flags */
-				if (version >= 3) {
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-				}
-				/* try to read 'bags-only' and 'disabled' flags */
-				if (version >= 4) {
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-				}
-			} else {
-				char aif, aiidp, ais, aid;
-				int res;
-
-				if (ai_fgets(buf, MAX_CHARS, fp) == NULL) break;
-				res = sscanf(buf, "  %c,%c,%c,%c\n", &aif, &aiidp, &ais, &aid);
-				if (res != 4) break;
-			}
-			continue;
-		}
-
-		/* Old version (v1, before version tag was introduced): Convert '?' wildcard to new '*' wildcard automatically: */
-		if (version == 1) {
-			char *wc;
-
-			while ((wc = strchr(buf, '?'))) *wc = '#';
-		}
+		/* Skip empty matches, but keep consuming the entry to preserve file alignment. */
+		if (!match[0]) continue;
 
 		/* check for duplicate entry (if it already exists)
 		   and replace older entry simply */
 		for (j = 0; j < MAX_AUTO_INSCRIPTIONS; j++) {
-			if (strcmp(bufptr, auto_inscription_match[j])) continue;
+			if (strcmp(match, auto_inscription_match[j])) continue;
 
-			/* try to read according tag */
-			if (ai_fgets(buf, AUTOINS_TAG_LEN, fp) == NULL) break;
-			strcpy(auto_inscription_tag[j], buf);
+			strcpy(auto_inscription_tag[j], tag);
 			auto_inscription_force[j] = force;
-
-			if (version < 5) {
-				auto_inscription_ignore[j] = FALSE;
-
-				/* try to read automation flags */
-				if (version >= 3) {
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					tmp = atoi(buf);
-					if (tmp >= 2) {
-						auto_inscription_ignore[j] = TRUE;
-						tmp -= 2;
-					}
-					auto_inscription_autopickup[j] = tmp;
-
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					auto_inscription_autodestroy[j] = atoi(buf);
-				}
-
-				/* try to read 'bags-only' and 'disabled' flags */
-				if (version >= 4) {
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					auto_inscription_subinven[j] = atoi(buf);
-					if (ai_fgets(buf, 5, fp) == NULL) break;
-					auto_inscription_disabled[j] = atoi(buf);
-				}
-			} else {
-				char aif, aiidp, ais, aid;
-				int res;
-
-				if (ai_fgets(buf, MAX_CHARS, fp) == NULL) break;
-				res = sscanf(buf, "  %c,%c,%c,%c\n", &aif, &aiidp, &ais, &aid);
-				if (res != 4) break;
-
-				auto_inscription_force[j] = force = (aif == 'F');
-				auto_inscription_ignore[j] = auto_inscription_autopickup[j] = auto_inscription_autodestroy[j] = FALSE;
-				switch (aiidp) {
-				case 'i': auto_inscription_ignore[j] = TRUE; break;
-				case 'a': auto_inscription_autopickup[j] = TRUE; break;
-				case 'A': auto_inscription_autodestroy[j] = TRUE; break;
-				}
-				auto_inscription_subinven[j] = (ais == 'b');
-				auto_inscription_disabled[j] = (aid == 'X');
-			}
-
-			replaced = TRUE;
+			auto_inscription_ignore[j] = ignore;
+			auto_inscription_autopickup[j] = autopickup;
+			auto_inscription_autodestroy[j] = autodestroy;
+			auto_inscription_subinven[j] = subinven;
+			auto_inscription_disabled[j] = disabled;
+#ifdef REGEX_SEARCH
+			ai_validate_autoinscription_regex(j);
+#endif
 			loaded_something = TRUE;
 			break;
 		}
-		if (replaced) continue;
-
-		if (j < MAX_AUTO_INSCRIPTIONS) break; //premature ending -> broken .ins file
+		if (j < MAX_AUTO_INSCRIPTIONS) continue;
 
 		/* search for free match-slot */
 		if (c >= 0) {
-			while (auto_inscription_match[c][0] && c < MAX_AUTO_INSCRIPTIONS) c++;
+			while (c < MAX_AUTO_INSCRIPTIONS && auto_inscription_match[c][0]) c++;
 			if (c == MAX_AUTO_INSCRIPTIONS) {
 				c = -1;
 				c_eff = 0;
@@ -2719,69 +2738,17 @@ bool load_auto_inscriptions(cptr name) {
 		}
 		/* set slot */
 		loaded_something = TRUE;
-		strcpy(auto_inscription_match[c_eff], bufptr);
+		strcpy(auto_inscription_match[c_eff], match);
+		strcpy(auto_inscription_tag[c_eff], tag);
 		auto_inscription_force[c_eff] = force;
+ 		auto_inscription_ignore[c_eff] = ignore;
+		auto_inscription_autopickup[c_eff] = autopickup;
+		auto_inscription_autodestroy[c_eff] = autodestroy;
+		auto_inscription_subinven[c_eff] = subinven;
+		auto_inscription_disabled[c_eff] = disabled;
 #ifdef REGEX_SEARCH
-		/* Actually test regexp for validity right away, so we can avoid spam/annoyance/searching later. */
-		/* Check for '$' prefix, forcing regexp interpretation */
-		regptr = auto_inscription_match[c_eff];
-		if (regptr[0] == '$') {
-			regptr++;
-			ires = regcomp(&re_src, regptr, REG_EXTENDED | REG_ICASE);
-			if (ires != 0) {
-				auto_inscription_invalid[c_eff] = TRUE;
-				c_msg_format("\377oInvalid regular expression in auto-inscription #%d.", c_eff + 1);
-			} else auto_inscription_invalid[c_eff] = FALSE;
-			regfree(&re_src);
-		}
+		ai_validate_autoinscription_regex(c_eff);
 #endif
-
-		/* try to read according tag */
-		if (ai_fgets(buf, AUTOINS_TAG_LEN, fp) == NULL) break;
-		strcpy(auto_inscription_tag[c_eff], buf);
-
-		if (version < 5) {
-			auto_inscription_ignore[c_eff] = FALSE;
-
-			/* try to read automation flags */
-			if (version >= 3) {
-				if (ai_fgets(buf, 5, fp) == NULL) break;
-				tmp = atoi(buf);
-				if (tmp >= 2) {
-					auto_inscription_ignore[c_eff] = TRUE;
-					tmp -= 2;
-				}
-				auto_inscription_autopickup[c_eff] = tmp;
-
-				if (ai_fgets(buf, 5, fp) == NULL) break;
-				auto_inscription_autodestroy[c_eff] = atoi(buf);
-			}
-
-			/* try to read 'bags-only' and 'disabled' flags */
-			if (version >= 4) {
-				if (ai_fgets(buf, 5, fp) == NULL) break;
-				auto_inscription_subinven[c_eff] = atoi(buf);
-				if (ai_fgets(buf, 5, fp) == NULL) break;
-				auto_inscription_disabled[c_eff] = atoi(buf);
-			}
-		} else {
-			char aif, aiidp, ais, aid;
-			int res;
-
-			if (ai_fgets(buf, MAX_CHARS, fp) == NULL) break;
-			res = sscanf(buf, "  %c,%c,%c,%c\n", &aif, &aiidp, &ais, &aid);
-			if (res != 4) break;
-
-			auto_inscription_force[c_eff] = (aif == 'F');
-			auto_inscription_ignore[c_eff] = auto_inscription_autopickup[c_eff] = auto_inscription_autodestroy[c_eff] = FALSE;
-			switch (aiidp) {
-			case 'i': auto_inscription_ignore[c_eff] = TRUE; break;
-			case 'a': auto_inscription_autopickup[c_eff] = TRUE; break;
-			case 'A': auto_inscription_autodestroy[c_eff] = TRUE; break;
-			}
-			auto_inscription_subinven[c_eff] = (ais == 'b');
-			auto_inscription_disabled[c_eff] = (aid == 'X');
-		}
 
 		if (c >= 0) c++;
 	}
