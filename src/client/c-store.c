@@ -8,6 +8,260 @@
 bool leave_store;
 int store_top = 0;
 
+enum {
+	STORE_FILTER_ALL = 0,
+	STORE_FILTER_WEAPONS,
+	STORE_FILTER_ARCHERY,
+	STORE_FILTER_ARMOURY,
+	STORE_FILTER_JEWELRY,
+	STORE_FILTER_BOOKS,
+	STORE_FILTER_MAGIC,
+	STORE_FILTER_SUPPLIES,
+	STORE_FILTER_TOOLS,
+	STORE_FILTER_MISC,
+	STORE_FILTER_MAX
+};
+
+static byte store_filter = STORE_FILTER_ALL;
+static int store_display[STORE_INVEN_MAX];
+static int store_display_num = 0;
+
+void display_store_inventory(void);
+
+static bool store_item_matches_filter_kind(byte filter, object_type *o_ptr);
+
+static cptr store_filter_name(byte filter) {
+	switch (filter) {
+	case STORE_FILTER_WEAPONS:
+		return("Weapons");
+	case STORE_FILTER_ARCHERY:
+		return("Archery");
+	case STORE_FILTER_ARMOURY:
+		return("Armoury");
+	case STORE_FILTER_JEWELRY:
+		return("Jewelry");
+	case STORE_FILTER_BOOKS:
+		return("Books & runes");
+	case STORE_FILTER_MAGIC:
+		return("Magic devices");
+	case STORE_FILTER_SUPPLIES:
+		return("Supplies");
+	case STORE_FILTER_TOOLS:
+		return("Tools & light");
+	case STORE_FILTER_MISC:
+		return("Miscellaneous");
+	default:
+		return("All items");
+	}
+}
+
+static bool store_item_matches_filter_kind(byte filter, object_type *o_ptr) {
+	switch (filter) {
+	case STORE_FILTER_WEAPONS:
+		return(is_melee_weapon(o_ptr->tval) || o_ptr->tval == TV_DIGGING || o_ptr->tval == TV_MSTAFF);
+	case STORE_FILTER_ARCHERY:
+		return(is_ranged_weapon(o_ptr->tval)
+		    || o_ptr->tval == TV_BOOMERANG
+		    || o_ptr->tval == TV_SHOT
+		    || o_ptr->tval == TV_ARROW
+		    || o_ptr->tval == TV_BOLT);
+	case STORE_FILTER_ARMOURY:
+		return(o_ptr->tval == TV_BOOTS
+		    || o_ptr->tval == TV_GLOVES
+		    || o_ptr->tval == TV_HELM
+		    || o_ptr->tval == TV_CROWN
+		    || o_ptr->tval == TV_SHIELD
+		    || o_ptr->tval == TV_CLOAK
+		    || o_ptr->tval == TV_SOFT_ARMOR
+		    || o_ptr->tval == TV_HARD_ARMOR
+		    || o_ptr->tval == TV_DRAG_ARMOR);
+	case STORE_FILTER_JEWELRY:
+		return(o_ptr->tval == TV_RING || o_ptr->tval == TV_AMULET || o_ptr->tval == TV_GEM);
+	case STORE_FILTER_BOOKS:
+		return(o_ptr->tval == TV_BOOK || o_ptr->tval == TV_RUNE);
+	case STORE_FILTER_MAGIC:
+		return(is_magic_device(o_ptr->tval) || o_ptr->tval == TV_ROD_MAIN || o_ptr->tval == TV_SCROLL);
+	case STORE_FILTER_SUPPLIES:
+		return(o_ptr->tval == TV_POTION
+		    || o_ptr->tval == TV_POTION2
+		    || o_ptr->tval == TV_FLASK
+		    || o_ptr->tval == TV_FOOD
+		    || o_ptr->tval == TV_BOTTLE
+		    || o_ptr->tval == TV_FIRESTONE
+		    || o_ptr->tval == TV_BATERIE
+		    || o_ptr->tval == TV_CHEMICAL);
+	case STORE_FILTER_TOOLS:
+		return(o_ptr->tval == TV_TOOL
+		    || o_ptr->tval == TV_TRAPKIT
+		    || o_ptr->tval == TV_INSTRUMENT
+		    || o_ptr->tval == TV_LITE
+		    || o_ptr->tval == TV_SPIKE
+		    || o_ptr->tval == TV_KEY);
+	default:
+		return(TRUE);
+	}
+}
+
+static bool store_item_matches_primary_filters(object_type *o_ptr) {
+	return(store_item_matches_filter_kind(STORE_FILTER_WEAPONS, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_ARCHERY, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_ARMOURY, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_JEWELRY, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_BOOKS, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_MAGIC, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_SUPPLIES, o_ptr)
+	    || store_item_matches_filter_kind(STORE_FILTER_TOOLS, o_ptr));
+}
+
+static bool store_item_matches_filter2(object_type *o_ptr) {
+	if (store_filter == STORE_FILTER_MISC) return(!store_item_matches_primary_filters(o_ptr));
+	return(store_item_matches_filter_kind(store_filter, o_ptr));
+}
+
+static void store_rebuild_filter_view(void) {
+	int i;
+
+	store_display_num = 0;
+	for (i = 0; i < store.stock_num; i++) {
+		if (!store_item_matches_filter2(&store.stock[i])) continue;
+		store_display[store_display_num++] = i;
+	}
+
+	if (store_top >= store_display_num) store_top = 0;
+}
+
+static int store_find_display_index(int item) {
+	int i;
+
+	for (i = 0; i < store_display_num; i++) {
+		if (store_display[i] == item) return(i);
+	}
+
+	return(-1);
+}
+
+static void store_filter_status(char *buf, size_t len) {
+	cptr name;
+
+	switch (store_filter) {
+	case STORE_FILTER_WEAPONS:
+		name = "Weapons";
+		break;
+	case STORE_FILTER_ARCHERY:
+		name = "Archery";
+		break;
+	case STORE_FILTER_ARMOURY:
+		name = "Armoury";
+		break;
+	case STORE_FILTER_JEWELRY:
+		name = "Jewelry";
+		break;
+	case STORE_FILTER_BOOKS:
+		name = "Books";
+		break;
+	case STORE_FILTER_MAGIC:
+		name = "Magic";
+		break;
+	case STORE_FILTER_SUPPLIES:
+		name = "Supply";
+		break;
+	case STORE_FILTER_TOOLS:
+		name = "Tools";
+		break;
+	case STORE_FILTER_MISC:
+		name = "Misc";
+		break;
+	default:
+		name = "All";
+		break;
+	}
+
+	if (store_filter == STORE_FILTER_ALL) snprintf(buf, len, " F:%s", name);
+	else snprintf(buf, len, " F:%s %d/%d", name, store_display_num, store.stock_num);
+}
+
+static void store_draw_filter_status(void) {
+	char filter_buf[32];
+	int y = 2;
+	int spacer = (screen_hgt == MAX_SCREEN_HGT) ? 14 : 0;
+
+	store_filter_status(filter_buf, sizeof(filter_buf));
+	Term_erase(0, y + 16 + spacer, 46);
+	put_str(filter_buf, y + 16 + spacer, 2);
+	Term->scr->cx = Term->wid;
+	Term->scr->cu = 1;
+}
+
+static void store_show_filter_help(void) {
+	c_message_add("Store filter groups follow the usual shop categories.");
+	c_message_add("Use / to choose: A all, W weapons, R archery, O armoury, J jewelry.");
+	c_message_add("B books/runes, M magic devices, C supplies, T tools/light, X misc.");
+	c_msg_print("Filter help shown in message history.");
+}
+
+static void store_select_filter(void) {
+	char cmd;
+	byte new_filter;
+
+	if (!get_com("Filter: (A)ll (W)eapons a(R)chery arm(O)ury (J)ewelry (B)ooks (M)agic (C)supplies (T)ools mi(X)", &cmd)) {
+		return;
+	}
+
+	new_filter = store_filter;
+	switch (cmd) {
+	case 'A':
+	case 'a':
+	case '*':
+		new_filter = STORE_FILTER_ALL;
+		break;
+	case 'W':
+	case 'w':
+		new_filter = STORE_FILTER_WEAPONS;
+		break;
+	case 'R':
+	case 'r':
+		new_filter = STORE_FILTER_ARCHERY;
+		break;
+	case 'O':
+	case 'o':
+		new_filter = STORE_FILTER_ARMOURY;
+		break;
+	case 'J':
+	case 'j':
+		new_filter = STORE_FILTER_JEWELRY;
+		break;
+	case 'B':
+	case 'b':
+		new_filter = STORE_FILTER_BOOKS;
+		break;
+	case 'M':
+	case 'm':
+		new_filter = STORE_FILTER_MAGIC;
+		break;
+	case 'C':
+	case 'c':
+		new_filter = STORE_FILTER_SUPPLIES;
+		break;
+	case 'T':
+	case 't':
+		new_filter = STORE_FILTER_TOOLS;
+		break;
+	case 'X':
+	case 'x':
+		new_filter = STORE_FILTER_MISC;
+		break;
+	default:
+		bell();
+		return;
+	}
+
+	store_filter = new_filter;
+	store_top = 0;
+	store_last_item = -1;
+	display_store_inventory();
+	c_msg_format("Store filter: %s", store_filter_name(store_filter));
+}
+
 
 
 /*
@@ -31,7 +285,7 @@ void display_store_action() {
 	}
 }
 
-static void display_entry(int pos, int entries) {
+static void display_entry(int pos, int row) {
 	object_type *o_ptr;
 	int i, y = 2;
 	s32b prc;
@@ -45,8 +299,8 @@ static void display_entry(int pos, int entries) {
 	o_ptr = &store.stock[pos];
 	wgt = o_ptr->weight;
 
-	/* Get the "offset" */
-	i = (pos % entries);
+	/* Get the visible row on the current page */
+	i = row;
 
 	/* Label it, clear the line --(-- */
 	if (wgt >= 0 || store_num == STORE_HOME || store_num == STORE_HOME_DUN) { /* <0: player store hack */
@@ -137,13 +391,16 @@ void display_store_inventory(void) {
 
 	/* BIG_MAP leads to big shops */
 	if (screen_hgt == MAX_SCREEN_HGT) entries = 26; /* we don't have 34 letters in the alphabet =p */
+	store_rebuild_filter_view();
+	store_draw_filter_status();
+	if (store_display_num > 0 && store_top >= store_display_num) store_top = ((store_display_num - 1) / entries) * entries;
 
 	for (k = 0; k < entries; k++) {
 		/* Do not display "dead" items */
-		if (store_top + k >= store.stock_num) break;
+		if (store_top + k >= store_display_num) break;
 
 		/* Display that one */
-		display_entry(store_top + k, entries);
+		display_entry(store_display[store_top + k], k);
 	}
 
 	/* Erase the extra lines, +1 for the "more" prompt */
@@ -153,15 +410,17 @@ void display_store_inventory(void) {
 	put_str("             ", y + 2, 20);
 
 	/* Visual reminder of "more items" */
-	if (store.stock_num > entries) {
+	if (store_display_num > entries) {
 		/* Show "more" reminder (after the last item) */
 		put_str("-more (Space/Backspace to flip page)-", k + y + 3, 3);
 
 		/* Indicate the "current page" */
 		put_str(format("(Page %d of %d)%s%s",
-		    store_top / entries + 1, store.stock_num == 0 ? 1 : (store.stock_num + entries - 1) / entries,
-		    store_top / entries + 1 >= 10 ? "" : " ", (store.stock_num + entries - 1) / entries >= 10 ? "" : " "),
+		    store_top / entries + 1, store_display_num == 0 ? 1 : (store_display_num + entries - 1) / entries,
+		    store_top / entries + 1 >= 10 ? "" : " ", (store_display_num + entries - 1) / entries >= 10 ? "" : " "),
 		    y + 2, 20);
+	} else if (!store_display_num && store.stock_num) {
+		put_str("No items match the current filter.", y + 3, 3);
 	}
 
 #ifdef STOCK_DURING_BROWSE
@@ -184,49 +443,56 @@ void display_store_inventory(void) {
 static int get_stock(int *com_val, cptr pmt, int i, int j) {
 	char command;
 	char out_val[160];
+	int previous_visible = -1, previous_page_slot = -1;
 
 	/* Paranoia XXX XXX XXX */
 	clear_topline_forced();
+	store_rebuild_filter_view();
+	previous_visible = store_find_display_index(store_last_item);
+	if (previous_visible >= store_top && previous_visible < store_top + (j - i + 1)) previous_page_slot = previous_visible - store_top;
 
 	/* Assume failure */
 	*com_val = (-1);
 
 	/* Build the prompt */
-	if (store_last_item == -1) (void)sprintf(out_val, "(Items %c-%c, ESC to exit) %s", I2A(i), I2A(j), pmt);
+	if (previous_page_slot == -1) (void)sprintf(out_val, "(Items %c-%c, ESC to exit) %s", I2A(i), I2A(j), pmt);
 	else (void)sprintf(out_val, "(Items %c-%c, + for previous, ESC to exit) %s", I2A(i), I2A(j), pmt);
 
 	/* Ask until done */
 	while (TRUE) {
 	        int k;
+		int item;
 
 		/* Escape */
 		if (!get_com(out_val, &command)) break;
 
-		if (command == '+') command = 'a' + store_last_item;
+		if (command == '+' && previous_page_slot != -1) command = 'a' + previous_page_slot;
 
 		/* Convert */
 		k = (islower(command) ? A2I(command) : -1);
 
-		/* Remember this item pile in the stock for buying/stealing more of the same */
-		store_last_item = k;
-		store_last_item_tval = store.stock[k].tval;
-		store_last_item_sval = store.stock[k].sval;
-		/* ...except if this was actually the last item!
-		   (We assume that this command gets through and the item _is_ really removed.
-		   If it isn't, the "+" option won't be available and the player will just have to
-		   operate on this last item manually, also not a big loss, since it's only 1.)
-		   Again, this can fail if macro doesn't use \w waits because the stock number update
-		   might not yet been received from the server for numbers > 1.
-		   Potential local workaround: If client knew that we are specifically stealing,
-		   it could assume each attempt successful and decrement a working copy of the stock number
-		   as local counter and use that instead of the server-updated stock.number. If stealing failed
-		   we'd have to re-enter the store anyway so the stock number would correctly get updated again.
-		   ...Or just use \w waits in the macros. */
-		if (store.stock[k].number == 1) store_last_item = -1;
-
 		/* Legal responses */
 		if ((k >= i) && (k <= j)) {
-			*com_val = k;
+			item = store_display[store_top + k];
+
+			/* Remember this item pile in the stock for buying/stealing more of the same */
+			store_last_item = item;
+			store_last_item_tval = store.stock[item].tval;
+			store_last_item_sval = store.stock[item].sval;
+			/* ...except if this was actually the last item!
+			   (We assume that this command gets through and the item _is_ really removed.
+			   If it isn't, the "+" option won't be available and the player will just have to
+			   operate on this last item manually, also not a big loss, since it's only 1.)
+			   Again, this can fail if macro doesn't use \w waits because the stock number update
+			   might not yet been received from the server for numbers > 1.
+			   Potential local workaround: If client knew that we are specifically stealing,
+			   it could assume each attempt successful and decrement a working copy of the stock number
+			   as local counter and use that instead of the server-updated stock.number. If stealing failed
+			   we'd have to re-enter the store anyway so the stock number would correctly get updated again.
+			   ...Or just use \w waits in the macros. */
+			if (store.stock[item].number == 1) store_last_item = -1;
+
+			*com_val = item;
 			break;
 		}
 
@@ -256,8 +522,16 @@ static void store_examine(bool no_browse) {
 	/* BIG_MAP leads to big shops */
 	int entries = (screen_hgt == MAX_SCREEN_HGT) ? 26 : 12;
 
+	store_rebuild_filter_view();
 
 	/* Empty? */
+	if (store_display_num <= 0) {
+		if (store.stock_num > 0) c_msg_print("No items match the current filter.");
+		else if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
+			c_msg_print("Your home is empty.");
+		else c_msg_print("I am currently out of stock.");
+		return;
+	}
 	if (store.stock_num <= 0) {
 		if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
 			c_msg_print("Your home is empty.");
@@ -266,7 +540,7 @@ static void store_examine(bool no_browse) {
 	}
 
 	/* Find the number of objects on this and following pages */
-	i = (store.stock_num - store_top);
+	i = (store_display_num - store_top);
 
 	/* And then restrict it to the current page */
 	if (i > entries) i = entries;
@@ -279,9 +553,6 @@ static void store_examine(bool no_browse) {
 
 	/* Get the item number to be bought */
 	if (!get_stock(&item, out_val, 0, i - 1)) return;
-
-	/* Get the actual index */
-	item = item + store_top;
 
 	/* Get the actual item */
 	o_ptr = &store.stock[item];
@@ -309,8 +580,16 @@ static void store_purchase(bool one) {
 	/* BIG_MAP leads to big shops */
 	int entries = (screen_hgt == MAX_SCREEN_HGT) ? 26 : 12;
 
+	store_rebuild_filter_view();
 
 	/* Empty? */
+	if (store_display_num <= 0) {
+		if (store.stock_num > 0) c_msg_print("No items match the current filter.");
+		else if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
+			c_msg_print("Your home is empty.");
+		else c_msg_print("I am currently out of stock.");
+		return;
+	}
 	if (store.stock_num <= 0) {
 		if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
 			c_msg_print("Your home is empty.");
@@ -320,7 +599,7 @@ static void store_purchase(bool one) {
 
 
 	/* Find the number of objects on this and following pages */
-	i = (store.stock_num - store_top);
+	i = (store_display_num - store_top);
 
 	/* And then restrict it to the current page */
 	if (i > entries) i = entries;
@@ -333,9 +612,6 @@ static void store_purchase(bool one) {
 
 	/* Get the item number to be bought */
 	if (!get_stock(&item, out_val, 0, i - 1)) return;
-
-	/* Get the actual index */
-	item = item + store_top;
 
 	/* Get the actual item */
 	o_ptr = &store.stock[item];
@@ -514,8 +790,16 @@ static void store_chat(void) {
 	/* BIG_MAP leads to big shops */
 	int entries = (screen_hgt == MAX_SCREEN_HGT) ? 26 : 12;
 
+	store_rebuild_filter_view();
 
 	/* Empty? */
+	if (store_display_num <= 0) {
+		if (store.stock_num > 0) c_msg_print("No items match the current filter.");
+		else if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
+			c_msg_print("Your home is empty.");
+		else c_msg_print("I am currently out of stock.");
+		return;
+	}
 	if (store.stock_num <= 0) {
 		if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
 			c_msg_print("Your home is empty.");
@@ -525,7 +809,7 @@ static void store_chat(void) {
 
 
 	/* Find the number of objects on this and following pages */
-	i = (store.stock_num - store_top);
+	i = (store_display_num - store_top);
 
 	/* And then restrict it to the current page */
 	if (i > entries) i = entries;
@@ -538,9 +822,6 @@ static void store_chat(void) {
 
 	/* Get the item number to be pasted */
 	if (!get_stock(&item, out_val, 0, i - 1)) return;
-
-	/* Get the actual index */
-	item = item + store_top;
 
 	store_paste_where(where);
 	store_paste_item(out_val, item);
@@ -640,6 +921,7 @@ void store_do_command(int num, bool one) {
 	int get_item_mode = 0;
 
 	i = amt = gold = item = item2 = 0;
+	store_rebuild_filter_view();
 
 	/* lazy job for 'older' commands */
 	switch (bact) {
@@ -659,6 +941,13 @@ void store_do_command(int num, bool one) {
 
 	if (c_store.flags[num] & BACT_F_STORE_ITEM) {
 		/* Empty? */
+		if (store_display_num <= 0) {
+			if (store.stock_num > 0) c_msg_print("No items match the current filter.");
+			else if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
+				c_msg_print("Your home is empty.");
+			else c_msg_print("I am currently out of stock.");
+			return;
+		}
 		if (store.stock_num <= 0) {
 			if (store_num == STORE_HOME || store_num == STORE_HOME_DUN)
 				c_msg_print("Your home is empty.");
@@ -668,7 +957,7 @@ void store_do_command(int num, bool one) {
 
 
 		/* Find the number of objects on this and following pages */
-		i = (store.stock_num - store_top);
+		i = (store_display_num - store_top);
 
 		/* And then restrict it to the current page */
 		if (i > entries) i = entries;
@@ -678,9 +967,6 @@ void store_do_command(int num, bool one) {
 
 		/* Get the item number to be bought */
 		if (!get_stock(&item, out_val, 0, i - 1)) return;
-
-		/* Get the actual index */
-		item = item + store_top;
 	}
 
 	if (c_store.flags[num] & BACT_F_INVENTORY) {
@@ -787,6 +1073,7 @@ static void store_process_command(int cmd) {
 
 	/* BIG_MAP leads to big shops */
 	int entries = (screen_hgt == MAX_SCREEN_HGT) ? 26 : 12;
+	store_rebuild_filter_view();
 
 	for (i = 0; i < MAX_STORE_ACTIONS; i++) {
 		if (!c_store.actions[i]) continue;
@@ -874,6 +1161,15 @@ static void store_process_command(int cmd) {
 	/* Parse the command */
 	i = 0; /* for jumping to page 1/2/3/4 */
 	switch (cmd) {
+		case '?':
+			store_show_filter_help();
+			break;
+
+		case '/':
+		case 'f':
+			store_select_filter();
+			break;
+
 		/* Leave */
 		case ESCAPE:
 		case KTRL('Q'):
@@ -888,7 +1184,7 @@ static void store_process_command(int cmd) {
 
 		/* Browse */
 		case ' ':
-			if (store.stock_num <= entries) {
+			if (store_display_num <= entries) {
 				if (store_top) {
 					/*
 					 * Hack - Allowing going back to first page after buying
@@ -896,28 +1192,28 @@ static void store_process_command(int cmd) {
 					store_top = 0;
 					display_store_inventory();
 				} else {
-					c_msg_print("Entire inventory is shown.");
+					c_msg_print(store_display_num ? "Entire inventory is shown." : "No items match the current filter.");
 				}
 			} else {
 				store_top += entries;
-				if (store_top >= store.stock_num) store_top = 0;
+				if (store_top >= store_display_num) store_top = 0;
 				display_store_inventory();
 			}
 			break;
 
 		/* Allow to browse backwards via BACKSPACE */
 		case '\b':
-			if (store.stock_num <= entries) {
+			if (store_display_num <= entries) {
 				if (store_top) {
 					/* see above - C. Blue */
 					store_top = 0;
 					display_store_inventory();
 				} else {
-					c_msg_print("Entire inventory is shown.");
+					c_msg_print(store_display_num ? "Entire inventory is shown." : "No items match the current filter.");
 				}
 			} else {
 				store_top -= entries;
-				if (store_top < 0) store_top = ((store.stock_num - 1) / entries) * entries;
+				if (store_top < 0) store_top = ((store_display_num - 1) / entries) * entries;
 				display_store_inventory();
 			}
 			break;
@@ -933,7 +1229,7 @@ static void store_process_command(int cmd) {
 		case '3': i++; __attribute__ ((fallthrough));
 		case '2': i++; __attribute__ ((fallthrough));
 		case '1':
-			if (store.stock_num > entries * i) {
+			if (store_display_num > entries * i) {
 				store_top = entries * i;
 				display_store_inventory();
 			}
@@ -1055,6 +1351,7 @@ void c_store_prt_gold(void) {
 	if (c_cfg.colourize_bignum) colour_bignum(p_ptr->au, -1, out_val, 0, TRUE);
 	else sprintf(out_val, "%10d", p_ptr->au);
 	put_str(out_val, y + 16 + spacer, x + 16);
+	store_draw_filter_status();
 
 	/* Hack -- show balance (if not 0) */
 	if (store_num == STORE_MERCHANTS_GUILD && p_ptr->balance) {
@@ -1114,6 +1411,8 @@ void display_store(void) {
 	/* Clear screen */
 	Term_clear();
 
+	store_filter = STORE_FILTER_ALL;
+	store_display_num = 0;
 	store_top = 0;
 
 	/* The "Home" is special */
@@ -1175,18 +1474,18 @@ void display_store(void) {
 
 	/* Interact with player */
 	while (!leave_store) {
-		/* Hack -- Clear line 1 */
-		prt("", 1, 0);
-
 		/* Clear */
 		clear_from(y + 18 + spacer);
 
 		/* Prompt */
 		if (store_num == STORE_HOME || store_num == STORE_HOME_DUN) prt(" ESC) Exit house", y + y2 + 17 + spacer, 0);
 		else prt(" ESC) Exit store", y + y2 + 17 + spacer, 0);
-		if (store.stock_num) prt("   c) Paste to chat", y + y2 + 18 + spacer, 0);
-		if (store.stock_num > 12 + spacer)
-			prt(format("%s1-%d) Go to page", (store.stock_num - 1) / (12 + spacer) + 1 >= 10 ? "" : " ", (store.stock_num - 1) / (12 + spacer) + 1), y + y2 + 19 + spacer, 0);
+		prt(" /) Filter  ?) Help", y + y2 + 18 + spacer, 0);
+		if (store_display_num) prt(" c) Paste to chat", y + y2 + 19 + spacer, 0);
+		else prt("", y + y2 + 19 + spacer, 0);
+		if (store_display_num > 12 + spacer)
+			prt(format("%s1-%d) Go to page", (store_display_num - 1) / (12 + spacer) + 1 >= 10 ? "" : " ", (store_display_num - 1) / (12 + spacer) + 1), y + y2 + 20 + spacer, 0);
+		else prt("", y + y2 + 20 + spacer, 0);
 
 		display_store_action();
 
@@ -1211,6 +1510,8 @@ void display_store(void) {
 	/* We are no longer "shopping" */
 	shopping = FALSE;
 	store.stock_num = 0;
+	store_display_num = 0;
+	store_filter = STORE_FILTER_ALL;
 	store_last_item = -1;
 
 	/* Flush any events that happened */
@@ -1235,6 +1536,8 @@ void display_store_special(void) {
 
 	/* Clear screen */
 	Term_clear();
+	store_filter = STORE_FILTER_ALL;
+	store_display_num = 0;
 
 	/* Put the owner name and race */
 	sprintf(buf, "%s", c_store.owner_name);
