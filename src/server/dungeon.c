@@ -4022,6 +4022,9 @@ static void process_player_begin(int Ind) {
 	cave_type **zcave;
 	dun_level *l_ptr;
 
+	/* Frozen players skip this entire tick phase. */
+	if (p_ptr->skip_tick_turns) return;
+
 	p_ptr->heal_turn_20 +=  p_ptr->heal_turn[0] - p_ptr->heal_turn[20];
 	p_ptr->heal_turn_10 +=  p_ptr->heal_turn[0] - p_ptr->heal_turn[10];
 	p_ptr->heal_turn_5 +=  p_ptr->heal_turn[0] - p_ptr->heal_turn[5];
@@ -4214,9 +4217,11 @@ static void process_player_begin(int Ind) {
 	}
 #endif
 
-	/* Give the player some energy */
-	p_ptr->energy += extract_energy[p_ptr->pspeed];
-	limit_energy(p_ptr);
+	/* Give the player some energy unless this player is currently tick-frozen. */
+	if (!p_ptr->skip_tick_turns) {
+		p_ptr->energy += extract_energy[p_ptr->pspeed];
+		limit_energy(p_ptr);
+	}
 #if 0
 #ifdef NEW_AUTORET_2_ENERGY
 ..if extracted energy accumulated is same as level speed, it means 1 player turn passed for us,
@@ -7266,6 +7271,9 @@ static void process_player_end(int Ind) {
 	c_ptr = &zcave[p_ptr->py][p_ptr->px];
 
 	if (Players[Ind]->conn == NOT_CONNECTED) return;
+
+	/* Frozen players skip this entire tick phase. */
+	if (p_ptr->skip_tick_turns) return;
 
 
 	/* --- Process various turn counters --- */
@@ -10917,6 +10925,9 @@ void dungeon(void) {
 			Send_beep(i);
 			p_ptr->paging--;
 		}
+
+		/* Frozen players skip this whole player tick. */
+		if (p_ptr->skip_tick_turns) continue;
 
 		/* Actually process that player */
 		process_player_begin(i);

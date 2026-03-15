@@ -15396,7 +15396,7 @@ static int Receive_raw_key(int ind) {
 	player_type *p_ptr = NULL;
 
 	char ch, key;
-	int n, player = -1;
+	int n, player = -1, i, m_idx;
 
 	if (connp->id != -1) {
 		player = GetInd[connp->id];
@@ -15407,6 +15407,51 @@ static int Receive_raw_key(int ind) {
 	if ((n = Packet_scanf(&connp->r, "%c%c", &ch, &key)) <= 0) {
 		if (n == -1) Destroy_connection(ind, "read error");
 		return(n);
+	}
+
+	/* Z is a persistent freeze-toggle for this level and has no energy cost/gate. */
+	if (p_ptr && key == 'Z' && p_ptr->store_num == -1) {
+		if (p_ptr->wpos.wz == 0 || istown(&p_ptr->wpos) || isdungeontown(&p_ptr->wpos)) {
+			msg_print(player, "\377yThis only works inside a dungeon level.");
+			return(2);
+		}
+
+		if (p_ptr->skip_tick_turns) {
+			for (i = 1; i <= NumPlayers; i++) {
+				player_type *q_ptr = Players[i];
+
+				if (q_ptr->conn == NOT_CONNECTED) continue;
+				if (!inarea(&q_ptr->wpos, &p_ptr->wpos)) continue;
+				q_ptr->skip_tick_turns = 0;
+			}
+
+			for (i = 0; i < m_top; i++) {
+				m_idx = m_fast[i];
+				if (!m_list[m_idx].r_idx) continue;
+				if (!inarea(&m_list[m_idx].wpos, &p_ptr->wpos)) continue;
+				m_list[m_idx].skip_tick_turns = 0;
+			}
+
+			msg_print(player, "\377gTime flows again on this level.");
+		} else {
+			for (i = 1; i <= NumPlayers; i++) {
+				player_type *q_ptr = Players[i];
+
+				if (q_ptr->conn == NOT_CONNECTED) continue;
+				if (!inarea(&q_ptr->wpos, &p_ptr->wpos)) continue;
+				q_ptr->skip_tick_turns = 1;
+			}
+
+			for (i = 0; i < m_top; i++) {
+				m_idx = m_fast[i];
+				if (!m_list[m_idx].r_idx) continue;
+				if (!inarea(&m_list[m_idx].wpos, &p_ptr->wpos)) continue;
+				m_list[m_idx].skip_tick_turns = 1;
+			}
+
+			msg_print(player, "\377BTime is frozen on this level.");
+		}
+		return(2);
 	}
 
 	if (p_ptr && p_ptr->energy >= level_speed(&p_ptr->wpos)) {

@@ -1795,8 +1795,8 @@ char roguelike_commands(char command) {
 	case KTRL('A'): return('j');
 	/* Toggle search mode */
 	case '#': return('S');
-	/* Use a staff (Zap) */
-	case 'Z': return('u');
+	/* Keep 'Z' reserved for server-side raw-key features (eg floor freeze toggle). */
+	case 'Z': return('Z');
 	/* Take off equipment */
 	case 'T': return('t');
 	/* Fire an item */

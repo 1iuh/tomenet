@@ -12408,6 +12408,11 @@ void process_monsters(void) {
 
 		r_ptr = race_inf(m_ptr);
 
+		/* Forced tick skip from floor-wide stasis-like effects. */
+		if (m_ptr->skip_tick_turns) {
+			continue;
+		}
+
 		rnd_move =
 		    ((r_ptr->flags1 & RF1_RAND_5) ? 5 : 0) + ((r_ptr->flags1 & RF1_RAND_10) ? 10 : 0) +
 		    ((r_ptr->flags1 & RF1_RAND_25) ? 25 : 0) + ((r_ptr->flags1 & RF1_RAND_50) ? 50 : 0) +
