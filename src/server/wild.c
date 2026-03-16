@@ -5166,7 +5166,7 @@ s32b initial_house_price(house_type *h_ptr) {
 }
 
 s32b house_price_player(s32b house_price, int charisma) {
-	house_price = ((house_price / 20) * (100 + adj_chr_gold[charisma])) / 10; //max base house price value before int overflow: 180M Au
+	house_price = (((house_price / 20) * (100 + adj_chr_gold[charisma])) / 10) / 10;
 	if (house_price < 100) house_price = 100;
 	return(house_price);
 }
