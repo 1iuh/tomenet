@@ -15440,6 +15440,9 @@ static int Receive_raw_key(int ind) {
 				if (q_ptr->conn == NOT_CONNECTED) continue;
 				if (!inarea(&q_ptr->wpos, &p_ptr->wpos)) continue;
 				q_ptr->skip_tick_turns = 1;
+				/* Enforce immediate freeze in the current frame too. */
+				q_ptr->energy = 0;
+				q_ptr->reserve_energy = 0;
 			}
 
 			for (i = 0; i < m_top; i++) {
