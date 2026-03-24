@@ -904,6 +904,7 @@ extern int Net_flush(void);
 extern int Net_fd(void);
 extern int Net_start(int sex, int race, int class);
 extern int Net_input(void);
+extern void Net_test_reconnect(void);
 extern int Flush_queue(void);
 extern int next_frame(void);
 
@@ -1295,6 +1296,12 @@ extern void refresh_palette(void);
 #endif
 
 #ifdef RETRY_LOGIN
+#define RL_CONN_STATE_NONE 0
+#define RL_CONN_STATE_LIVE 1
+#define RL_CONN_STATE_RETRY 2
+#define RL_CONN_STATE_QUIT 3
+#define RL_CONN_STATE_RECONNECT 4
+
 extern bool rl_connection_destructible, rl_connection_destroyed, rl_password;
 extern byte rl_connection_state;
 extern bool player_pref_files_loaded;

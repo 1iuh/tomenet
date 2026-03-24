@@ -8034,6 +8034,14 @@ void cmd_message(void) {
 			c_msg_format("\374\376\377yYour current local time: %04d/%02d/%02d (%s) - %02d:%02d:%02dh", 1900 + ctl->tm_year, ctl->tm_mon + 1, ctl->tm_mday, day_names[ctl->tm_wday], ctl->tm_hour, ctl->tm_min, ctl->tm_sec);
 			inkey_msg = FALSE;
 			return;
+		} else if (!strcasecmp(buf, "/reconnect") || !strcasecmp(buf, "/rc")) {
+#ifdef RETRY_LOGIN
+			Net_test_reconnect();
+#else
+			c_msg_print("Reconnect testing requires RETRY_LOGIN support.");
+#endif
+			inkey_msg = FALSE;
+			return;
 		} else if (!strcasecmp(buf, "/cver") || !strcasecmp(buf, "/cversion")) {
 			c_msg_format("Client version: %d.%d.%d.%d.%d.%d%s, OS %d.", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_EXTRA, VERSION_BRANCH, VERSION_BUILD, CLIENT_VERSION_TAG, VERSION_OS);
 			inkey_msg = FALSE;

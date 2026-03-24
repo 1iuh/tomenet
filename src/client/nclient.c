@@ -82,6 +82,18 @@ static int		(*receive_tbl[256])(void);
 static int		last_send_anything;
 static char		cl_initialized = 0;
 
+#ifdef RETRY_LOGIN
+static void Net_prepare_reconnect(cptr reason) {
+	if (rl_connection_state != RL_CONN_STATE_LIVE) return;
+
+	rl_connection_destructible = TRUE;
+	rl_connection_destroyed = TRUE;
+	rl_connection_state = RL_CONN_STATE_RECONNECT;
+
+	if (reason && *reason) fprintf(stderr, "reconnect: %s\n", reason);
+}
+#endif
+
 
 /* Based on Virus' MP bar mod */
 char *marker1 = "#######";
@@ -1524,6 +1536,21 @@ void Net_cleanup(void) {
 	wbuf.sock = -1;
 }
 
+#ifdef RETRY_LOGIN
+void Net_test_reconnect(void) {
+	int sock = wbuf.sock;
+
+	if (sock > 2) DgramClose(sock);
+
+	Sockbuf_cleanup(&rbuf);
+	Sockbuf_cleanup(&wbuf);
+	Sockbuf_cleanup(&qbuf);
+	wbuf.sock = -1;
+
+	Net_prepare_reconnect("Reconnect test triggered. Attempting to reconnect...");
+}
+#endif
+
 
 /*
  * Flush the network output buffer if it has some data in it.
@@ -1534,8 +1561,12 @@ int Net_flush(void) {
 		wbuf.ptr = wbuf.buf;
 		return(0);
 	}
-	if (Sockbuf_flush(&wbuf) == -1)
+	if (Sockbuf_flush(&wbuf) == -1) {
+#ifdef RETRY_LOGIN
+		Net_prepare_reconnect("Connection lost. Attempting to reconnect...");
+#endif
 		return(-1);
+	}
 	Sockbuf_clear(&wbuf);
 	last_send_anything = ticks;
 	return(1);
@@ -1549,7 +1580,7 @@ int Net_fd(void) {
 	if (!cl_initialized || c_quit) return(-1);
 #ifdef RETRY_LOGIN
 	/* prevent inkey() from crashing/causing Sockbuf_read() errors ("no read from non-readable socket..") */
-	if (rl_connection_state != 1) return(-1);
+	if (rl_connection_state != RL_CONN_STATE_LIVE) return(-1);
 #endif
 	return(rbuf.sock);
 }
@@ -1882,11 +1913,15 @@ int Net_input(void) {
 		n = Sockbuf_read(&rbuf);
 
 		if (n == 0) {
+		#ifdef RETRY_LOGIN
+			Net_prepare_reconnect("Server closed the connection. Attempting to reconnect...");
+			return(-1);
+		#else
 			quit("Server closed the connection");
+		#endif
 		} else if (n < 0) {
 #ifdef RETRY_LOGIN /* not needed */
-			/* catch an already destroyed connection - don't call quit() *again*, just go back peacefully; part 2/2 */
-//			if (rl_connection_destroyed) return(1);
+			Net_prepare_reconnect("Network read failed. Attempting to reconnect...");
 #endif
 			return(n);
 		} else {

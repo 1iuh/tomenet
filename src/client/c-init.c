@@ -43,6 +43,11 @@ const struct module sound_modules[] = {
 /* Use improved method for pasting monster/artifact lore into chat */
 #define NEW_PASTELINE_METHOD
 
+#ifdef RETRY_LOGIN
+#define AUTO_RECONNECT_MAX_RETRIES 10
+#define AUTO_RECONNECT_DELAY_MS 1000
+#endif
+
 
 static void init_arrays(void) {
 	int i;
@@ -3596,6 +3601,8 @@ void client_init(char *argv1, bool skip) {
 #endif
 #ifdef RETRY_LOGIN
 	bool rl_auto_relogin = FALSE;
+	bool rl_auto_resume = FALSE;
+	int rl_reconnect_attempt = 0;
 	term *old;
 #endif
 	FILE *fp;
@@ -3753,8 +3760,17 @@ void client_init(char *argv1, bool skip) {
 	nick[0] = toupper(nick[0]);
 
 	/* Create the net socket and make the TCP connection */
-	if ((Socket = CreateClientSocket(server_name, cfg_game_port)) == -1)
+	if ((Socket = CreateClientSocket(server_name, cfg_game_port)) == -1) {
+#ifdef RETRY_LOGIN
+		if (rl_auto_resume && rl_reconnect_attempt < AUTO_RECONNECT_MAX_RETRIES) {
+			rl_reconnect_attempt++;
+			plog(format("Reconnect attempt %d/%d failed. Retrying...", rl_reconnect_attempt, AUTO_RECONNECT_MAX_RETRIES));
+			Term_xtra(TERM_XTRA_DELAY, AUTO_RECONNECT_DELAY_MS);
+			goto retry_contact;
+		}
+#endif
 		quit("That server either isn't up, or you mistyped the hostname.\n");
+	}
 
 	{
 #if defined (USE_X11) || defined(USE_GCU)
@@ -4119,12 +4135,31 @@ again:
 
 	/* Check for failure */
 	if (retries >= 10) {
+	#ifdef RETRY_LOGIN
+		if (rl_auto_resume && rl_reconnect_attempt < AUTO_RECONNECT_MAX_RETRIES) {
+			Net_cleanup();
+			rl_reconnect_attempt++;
+			plog(format("Reconnect attempt %d/%d timed out. Retrying...", rl_reconnect_attempt, AUTO_RECONNECT_MAX_RETRIES));
+			Term_xtra(TERM_XTRA_DELAY, AUTO_RECONNECT_DELAY_MS);
+			goto retry_contact;
+		}
+	#endif
 		Net_cleanup();
 		quit("Server didn't respond!\n");
 	}
 
 	/* Server returned error code */
 	if (status && status != E_NEED_INFO) {
+	#ifdef RETRY_LOGIN
+		if (rl_auto_resume && rl_reconnect_attempt < AUTO_RECONNECT_MAX_RETRIES &&
+		    (status == E_IN_USE || status == E_IN_USE_PC || status == E_IN_USE_DUP || status == E_CLOSED)) {
+			Net_cleanup();
+			rl_reconnect_attempt++;
+			plog(format("Reconnect waiting for server %d/%d...", rl_reconnect_attempt, AUTO_RECONNECT_MAX_RETRIES));
+			Term_xtra(TERM_XTRA_DELAY, AUTO_RECONNECT_DELAY_MS);
+			goto retry_contact;
+		}
+	#endif
 		/* The server didn't like us.... */
 		switch (status) {
 		case E_VERSION_OLD:
@@ -4357,7 +4392,7 @@ again:
 
 	/* Main loop */
 #ifdef RETRY_LOGIN
-	rl_connection_state = 1;
+	rl_connection_state = RL_CONN_STATE_LIVE;
 #endif
 	Input_loop();
 
@@ -4366,8 +4401,10 @@ again:
 
 #ifdef RETRY_LOGIN
 	if (rl_connection_state >= 2) {
+		bool auto_resume_now = (rl_connection_state == RL_CONN_STATE_RECONNECT);
+
 		/* We quit the game actively? (Otherwise the quit_hook will already have taken care of fading out). Or, in 4.9.3+, it' PKT_RELOGIN from the server. */
-		if (rl_connection_state == 3) {
+		if (rl_connection_state == RL_CONN_STATE_QUIT) {
  #ifdef USE_SOUND_2010
   #ifdef SOUND_SDL
 			mixer_fadeall();
@@ -4377,12 +4414,14 @@ again:
 
 		/* reset global game states (and activate auto-relogin) */
 		rl_auto_relogin = TRUE; //auto-logon up to character screen
+		rl_auto_resume = auto_resume_now;
+		rl_reconnect_attempt = 0;
 		in_game = FALSE; //BIG_MAP stuff? (paranoia?)
 		c_quit = FALSE; //un-quit (or Net_fd() will always return -1)
 		RL_revert_input(); //reset input parsing behaviour (macros etc) to normal
 
 		/* reset stuff that needs resetting for anew character-choice or anew character-creation specifically: */
-		cname[0] = 0; //reset character choice, or relog into character screen won't work
+		if (!auto_resume_now) cname[0] = 0; //reset character choice, or relog into character screen won't work
 		auto_reincarnation = FALSE;
 		player_pref_files_loaded = FALSE; //reload appropriate macros/auto-inscriptions on next character logon
 

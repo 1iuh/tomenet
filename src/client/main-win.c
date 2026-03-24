@@ -5686,6 +5686,11 @@ static void hook_quit(cptr str) {
 	int i, res = save_chat;
 	char buf[1024];
 
+#ifdef RETRY_LOGIN
+	/* During auto-reconnect, skip all quit/cleanup logic */
+	if (rl_connection_state == RL_CONN_STATE_RECONNECT) return;
+#endif
+
 #if 0
 #ifdef USE_SOUND_2010
 	/* let the sound fade out, also helps the user to realize
@@ -5700,7 +5705,9 @@ static void hook_quit(cptr str) {
 	c_quit = 1;
 
 	/* Give a warning */
-	if (str && *str) MessageBox(data[0].w, str, "Error", MB_OK | MB_ICONSTOP);
+	if (str && *str) {
+		MessageBox(data[0].w, str, "Error", MB_OK | MB_ICONSTOP);
+	}
 
 	if (save_chat != 3) {
 		/* Copied from quit_hook in c-init.c - mikaelh */
