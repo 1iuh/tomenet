@@ -9680,6 +9680,7 @@ static void display_diz_death(int Ind) {
 #define WHO_LET_THE_DOGS_OUT 100
 void player_death(int Ind) {
 	player_type *p_ptr = Players[Ind], *p_ptr2 = NULL;
+	connection_t *connp = NULL;
 	int Ind2;
 	object_type *o_ptr;
 	monster_type *m_ptr;
@@ -9703,6 +9704,38 @@ void player_death(int Ind) {
 	bool just_fruitbat_transformation = (p_ptr->fruit_bat == -1);
 	bool in_iddc = in_irondeepdive(&p_ptr->wpos);
 	object_type *inventory_copy;
+	struct timeval now;
+	long delta_sec, delta_usec;
+
+	/* If client has been silent for over 2 seconds, treat the death as disconnect-related:
+	   skip normal death penalties and move the player to recall position. */
+	if (p_ptr->conn != NOT_CONNECTED && Conn[p_ptr->conn]) {
+		connp = Conn[p_ptr->conn];
+		gettimeofday(&now, NULL);
+		delta_sec = now.tv_sec - connp->last_keepalive_recv.tv_sec;
+		delta_usec = now.tv_usec - connp->last_keepalive_recv.tv_usec;
+
+		if (delta_usec < 0) {
+			delta_sec--;
+			delta_usec += 1000000L;
+		}
+
+		if (delta_sec > 2 || (delta_sec == 2 && delta_usec > 0)) {
+			s_printf("DC_DEATH_SAVE: %s inactive for %ld.%06lds, skipping death penalty.\n",
+			    p_ptr->name, delta_sec, delta_usec);
+
+			p_ptr->death = FALSE;
+			p_ptr->chp = p_ptr->mhp;
+			p_ptr->chp_frac = 0;
+			if (p_ptr->csane < 0) p_ptr->csane = 0;
+
+			recall_player(Ind, "\377oYou were disconnected in a critical moment and were returned to safety.");
+
+			p_ptr->redraw |= (PR_HP | PR_GOLD | PR_BASIC | PR_DEPTH);
+			p_ptr->update |= (PU_BONUS | PU_SANITY);
+			return;
+		}
+	}
 
 
 	/* Amulet of immortality prevents death */

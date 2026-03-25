@@ -38,6 +38,7 @@ typedef struct {
 	bool		password_verified;
 	int		inactive_keepalive;
 	int		inactive_ping;
+	struct timeval	last_keepalive_recv;
 	int		race;
 	int		class;
 	int		trait;

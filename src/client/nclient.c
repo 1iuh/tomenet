@@ -8074,7 +8074,7 @@ void update_ticks(void) {
 	ticks = newticks;
 }
 
-/* Write a keepalive packet to the output queue if it has been two seconds
+/* Write a keepalive packet to the output queue if it has been one second
  * since we last sent anything.
  * Note that if the loop that is calling this function doesn't flush the
  * network output before calling this function again very bad things could
@@ -8082,10 +8082,10 @@ void update_ticks(void) {
  */
 void do_keepalive(void) {
 	/*
-	 * Check to see if it has been 2 seconds since we last sent anything.  Assume
+	 * Check to see if it has been 1 second since we last sent anything.  Assume
 	 * that each game turn lasts 100 ms.
 	 */
-	if ((ticks - last_send_anything) >= 20)
+	if ((ticks - last_send_anything) >= 10)
 		Send_keepalive();
 }
 

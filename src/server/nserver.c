@@ -2145,6 +2145,7 @@ int Setup_connection(char *real, char *nick, char *addr, char *host, version_typ
 	memcpy(&connp->version, version, sizeof(version_type));
 #endif
 	connp->start = turn;
+	gettimeofday(&connp->last_keepalive_recv, NULL);
 	connp->magic = ((unsigned int)rand()) + my_port + sock + turn; //unsigned overflow is defined, hence fine
 	connp->id = -1;
 	connp->timeout = LISTEN_TIMEOUT;
@@ -4205,6 +4206,8 @@ void process_pending_commands(int ind) {
 	//while ((connp->state == CONN_PLAYING ? p_ptr->energy >= level_speed(p_ptr->dun_depth) : 1) &&
 	while ((connp->r.ptr < connp->r.buf + connp->r.len)) {
 		char *foo = connp->r.ptr;
+
+		gettimeofday(&connp->last_keepalive_recv, NULL);
 
 		type = (connp->r.ptr[0] & 0xFF);
 		if (type != PKT_KEEPALIVE && type != PKT_PING) {
@@ -11558,17 +11561,17 @@ static int Receive_keepalive(int ind) {
 		Ind = GetInd[connp->id];
 		p_ptr = Players[Ind];
 
-		p_ptr->idle += 2;
-		p_ptr->idle_char += 2;
+		p_ptr->idle += 1;
+		p_ptr->idle_char += 1;
 		if (p_ptr->idle_char >= 120 && p_ptr->mute_when_idle && !p_ptr->muted_when_idle && istown(&p_ptr->wpos)) Send_idle(Ind, TRUE);
 
 		/* Kick a starving player */
-		if (p_ptr->idle_starve_kick && p_ptr->food < PY_FOOD_WEAK && connp->inactive_keepalive > STARVE_KICK_TIMER / 2) {
+		if (p_ptr->idle_starve_kick && p_ptr->food < PY_FOOD_WEAK && connp->inactive_keepalive > STARVE_KICK_TIMER) {
 			Destroy_connection(ind, STARVING_AUTOKICK_MSG);
 			return(2);
 		}
 
-		else if (!p_ptr->afk && p_ptr->auto_afk && connp->inactive_keepalive > AUTO_AFK_TIMER / 2) { /* dont oscillate ;) */
+		else if (!p_ptr->afk && p_ptr->auto_afk && connp->inactive_keepalive > AUTO_AFK_TIMER) { /* dont oscillate ;) */
 			/* auto AFK timer (>1 min) */
 //			if (!p_ptr->resting) toggle_afk(Ind, ""); /* resting can take quite long sometimes */
 			toggle_afk(Ind, "");
