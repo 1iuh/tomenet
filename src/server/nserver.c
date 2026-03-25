@@ -9541,25 +9541,11 @@ int Send_store(int Ind, u16b pos, byte attr, int wgt, int number, int price, cpt
 #ifdef MINDLINK_STORE
 	if (get_esp_link(Ind, LINKF_VIEW, &p_ptr2)) {
 		connp2 = Conn[p_ptr2->conn];
-		if (is_atleast(&p_ptr2->version, 4, 9, 25, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%hu%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, "");
-		else if (is_atleast(&p_ptr2->version, 4, 7, 3, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, "");
-		else if (is_newer_than(&p_ptr2->version, 4, 4, 7, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%S%c%c%hd", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval);
-		else
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%s%c%c%hd", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval);
+		Packet_printf(&connp2->c, "%c%hu%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, "");
 	}
 #endif
 
-	if (is_atleast(&Players[Ind]->version, 4, 9, 25, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%hu%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, powers);
-	else if (is_atleast(&Players[Ind]->version, 4, 7, 3, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, powers);
-	else if (is_newer_than(&Players[Ind]->version, 4, 4, 7, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%S%c%c%hd", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval);
-	else
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%s%c%c%hd", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval);
+	return Packet_printf(&connp->c, "%c%hu%c%hd%hd%d%S%c%c%hd%s", PKT_STORE, pos, attr, wgt, number, price, name, tval, sval, pval, powers);
 }
 
 /* Send_store() variant for custom spellbooks */
@@ -9588,25 +9574,11 @@ int Send_store_wide(int Ind, u16b pos, byte attr, int wgt, int number, int price
 #ifdef MINDLINK_STORE
 	if (get_esp_link(Ind, LINKF_VIEW, &p_ptr2)) {
 		connp2 = Conn[p_ptr2->conn];
-		if (is_atleast(&p_ptr2->version, 4, 9, 25, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%hu%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
-		else if (is_newer_than(&p_ptr2->version, 4, 7, 0, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
-		else if (is_newer_than(&p_ptr2->version, 4, 4, 7, 0, 0, 0))
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%S%c%c%hd%c%c%c%c%c%c%c%c%c", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1 & 0xFF, xtra2 & 0xFF, xtra3 & 0xFF, xtra4 & 0xFF, xtra5 & 0xFF, xtra6 & 0xFF, xtra7 & 0xFF, xtra8 & 0xFF, xtra9 & 0xFF);
-		else
-			Packet_printf(&connp2->c, "%c%c%c%hd%hd%d%s%c%c%hd%c%c%c%c%c%c%c%c%c", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1 & 0xFF, xtra2 & 0xFF, xtra3 & 0xFF, xtra4 & 0xFF, xtra5 & 0xFF, xtra6 & 0xFF, xtra7 & 0xFF, xtra8 & 0xFF, xtra9 & 0xFF);
+		Packet_printf(&connp2->c, "%c%hu%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
 	}
 #endif
 
-	if (is_atleast(&Players[Ind]->version, 4, 9, 25, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%hu%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
-	else if (is_newer_than(&Players[Ind]->version, 4, 7, 0, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
-	else if (is_newer_than(&Players[Ind]->version, 4, 4, 7, 0, 0, 0))
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%S%c%c%hd%c%c%c%c%c%c%c%c%c", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1 & 0xFF, xtra2 & 0xFF, xtra3 & 0xFF, xtra4 & 0xFF, xtra5 & 0xFF, xtra6 & 0xFF, xtra7 & 0xFF, xtra8 & 0xFF, xtra9 & 0xFF);
-	else
-		return Packet_printf(&connp->c, "%c%c%c%hd%hd%d%s%c%c%hd%c%c%c%c%c%c%c%c%c", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1 & 0xFF, xtra2 & 0xFF, xtra3 & 0xFF, xtra4 & 0xFF, xtra5 & 0xFF, xtra6 & 0xFF, xtra7 & 0xFF, xtra8 & 0xFF, xtra9 & 0xFF);
+	return Packet_printf(&connp->c, "%c%hu%c%hd%hd%d%S%c%c%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd", PKT_STORE_WIDE, pos, attr, wgt, number, price, name, tval, sval, pval, xtra1, xtra2, xtra3, xtra4, xtra5, xtra6, xtra7, xtra8, xtra9);
 }
 
 /* For new non-shop stores (SPECIAL flag) - C. Blue */
