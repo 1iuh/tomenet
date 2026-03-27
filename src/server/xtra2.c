@@ -7802,8 +7802,9 @@ bool monster_death(int Ind, int m_idx) {
 			invcopy(qq_ptr, I_kind);
 			qq_ptr->name1 = a_idx;
 
-			if (!(resf_chosen & RESF_NOTRUEART) ||
-			    ((resf_chosen & RESF_WINNER) && winner_artifact_p(qq_ptr))) {
+			if ((!(resf_chosen & RESF_NOTRUEART) ||
+			    ((resf_chosen & RESF_WINNER) && winner_artifact_p(qq_ptr))) &&
+			    ((resf_chosen & RESF_WINNER) || !winner_artifact_p(qq_ptr))) {
 				/* Extract the fields */
 				qq_ptr->pval = a_ptr->pval;
 				qq_ptr->ac = a_ptr->ac;
@@ -8786,8 +8787,9 @@ bool monster_death(int Ind, int m_idx) {
 				/* Save the name */
 				qq_ptr->name1 = a_idx;
 
-				if (!(resf_chosen & RESF_NOTRUEART) ||
-				    ((resf_chosen & RESF_WINNER) && winner_artifact_p(qq_ptr))) {
+				if ((!(resf_chosen & RESF_NOTRUEART) ||
+				    ((resf_chosen & RESF_WINNER) && winner_artifact_p(qq_ptr))) &&
+				    ((resf_chosen & RESF_WINNER) || !winner_artifact_p(qq_ptr))) {
 					/* Extract the fields */
 					qq_ptr->pval = a_ptr->pval;
 					qq_ptr->ac = a_ptr->ac;

@@ -4675,6 +4675,9 @@ static bool make_artifact_special(struct worldpos *wpos, object_type *o_ptr, u64
 		//if ((a_ptr->flags4 & TR4_SPECIAL_GENE) && (!a_allow_special[i]) && (!vanilla_town)) continue;
 		if (a_ptr->flags4 & TR4_SPECIAL_GENE) continue;
 
+		/* Non-winners must never generate WINNERS_ONLY true artifacts */
+		if (!(resf & RESF_WINNER) && (a_ptr->flags5 & TR5_WINNERS_ONLY)) continue;
+
 		/* Allow non-dropchosen/specialgene winner arts */
 		if (winner_arts_only && !(a_ptr->flags5 & TR5_WINNERS_ONLY)) continue;
 
@@ -4786,6 +4789,9 @@ static bool make_artifact(struct worldpos *wpos, object_type *o_ptr, u64b resf) 
 			/* Cannot generate some artifacts because they can only exists in special dungeons/quests/... */
 			//if ((a_ptr->flags4 & TR4_SPECIAL_GENE) && (!a_allow_special[i]) && (!vanilla_town)) continue;
 			if (a_ptr->flags4 & TR4_SPECIAL_GENE) continue;
+
+			/* Non-winners must never generate WINNERS_ONLY true artifacts */
+			if (!(resf & RESF_WINNER) && (a_ptr->flags5 & TR5_WINNERS_ONLY)) continue;
 
 			/* Allow non-dropchosen/specialgene winner arts */
 			if (winner_arts_only && !(a_ptr->flags5 & TR5_WINNERS_ONLY)) continue;
