@@ -848,8 +848,12 @@ extern void do_cmd_ghost_power_aux(int Ind, int dir);
 extern void shriek(int Ind);
 
 /* cmd6.c */
-extern bool curse_armor(int Ind);
-extern bool curse_weapon(int Ind);
+extern bool curse_armor_scroll(int Ind);
+extern bool curse_armor_trap(int Ind);
+extern bool curse_weapon_scroll(int Ind);
+extern bool curse_weapon_trap(int Ind);
+extern bool curse_armor_scroll_item(int Ind, int item);
+extern bool curse_weapon_scroll_item(int Ind, int item);
 extern bool do_cancellation(int Ind);
 extern bool eat_food(int Ind, int sval, object_type *o_ptr, bool *keep); //hack: for quests
 extern void do_cmd_eat_food(int Ind, int item);
@@ -1487,6 +1491,8 @@ extern void wipe_o_list_special(struct worldpos *wpos);
 extern void wipe_o_list_nonarts(struct worldpos *wpos);
 extern void apply_magic(struct worldpos *wpos, object_type *o_ptr, int lev, bool okay, bool good, bool great, bool verygreat, u64b resf);
 extern void apply_magic_depth(int Depth, object_type *o_ptr, int lev, bool okay, bool good, bool great, bool verygreat, u64b resf);
+extern bool make_bad_ego_like_drop(int level, object_type *o_ptr, u64b resf);
+extern bool make_heavy_bad_ego_like_drop(int level, object_type *o_ptr, u64b resf);
 extern void determine_level_req(int level, object_type *o_ptr);
 extern void verify_level_req(object_type *o_ptr);
 extern void place_object(int Ind, struct worldpos *wpos, int y, int x, bool good, bool great, bool verygreat, u64b resf, obj_theme theme, int luck, byte removal_marker, bool preown);

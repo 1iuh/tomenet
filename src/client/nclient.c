@@ -3901,10 +3901,28 @@ int Receive_item(void) {
 			item_tester_hook = item_tester_hook_armour_no_shield;
 			get_item_hook_find_obj_what = "Armour name? ";
 			break;
+		case ITH_CURSE_GEAR:
+			get_item_extra_hook = get_item_hook_find_obj;
+			item_tester_hook = NULL;
+			get_item_hook_find_obj_what = "Item name? ";
+			clear_topline();
+			if (!c_get_item(&item, "Which item? ", USE_EQUIP)) return(1);
+			Send_item(item);
+			return(1);
+			break;
 		case ITH_WEAPON:
 			get_item_extra_hook = get_item_hook_find_obj;
 			item_tester_hook = item_tester_hook_weapon;
 			get_item_hook_find_obj_what = "Weapon name? ";
+			break;
+		case ITH_CURSE_WEAPON:
+			get_item_extra_hook = get_item_hook_find_obj;
+			item_tester_hook = NULL;
+			get_item_hook_find_obj_what = "Item name? ";
+			clear_topline();
+			if (!c_get_item(&item, "Which item? ", USE_EQUIP)) return(1);
+			Send_item(item);
+			return(1);
 			break;
 		}
 

@@ -1726,14 +1726,6 @@ void do_cmd_drop(int Ind, int item, int quantity) {
 				/* Nope */
 				return;
 			}
-		} else if (f4 & TR4_CURSE_NO_DROP) {
-			if (override) override = 2;
-			else {
-				/* Oops */
-				msg_print(Ind, "\377yHmmm, you seem to be unable to drop it.");
-				/* Nope */
-				return;
-			}
 		}
 	}
 #if 0
@@ -1761,10 +1753,7 @@ void do_cmd_drop(int Ind, int item, int quantity) {
 	/* Stop littering inns */
 	if (zcave && inside_inn(p_ptr, &zcave[p_ptr->py][p_ptr->px])) {
 		/* No nothingness / curse-no-drop + heavy-curse stuff */
-		if (o_ptr->name2 == EGO_NOTHINGNESS ||
-		    //((f4 & TR4_CURSE_NO_DROP) && (f3 & (TR3_HEAVY_CURSE | TR3_PERMA_CURSE | TR3_AUTO_CURSE)))
-		    (f4 & TR4_CURSE_NO_DROP)
-		    ) {
+		if (o_ptr->name2 == EGO_NOTHINGNESS) {
 			msg_print(Ind, "\377yYou may not drop this dangerously cursed item here.");
 			if (!is_admin(p_ptr)) return;
 		}
@@ -2020,16 +2009,6 @@ bool do_cmd_destroy(int Ind, int item, int quantity) {
 		return(FALSE);
 	}
 #endif
-
-	if ((f4 & TR4_CURSE_NO_DROP) && cursed_p(o_ptr)) {
-		if (override) override = 2;
-		else {
-			/* Oops */
-			msg_print(Ind, "\377yHmmm, you seem to be unable to destroy it.");
-			/* Nope */
-			return(FALSE);
-		}
-	}
 
 	/* Cursed, equipped items cannot be destroyed */
 	if (item >= INVEN_WIELD && cursed_p(o_ptr)) {

@@ -770,7 +770,7 @@ bool player_activate_trap_type(int Ind, s16b y, s16b x, object_type *i_ptr, int 
 				msg_print(Ind, "You resist the effects!");
 				break;
 			}
-			ident = curse_weapon(Ind);
+			ident = curse_weapon_trap(Ind);
 			ruin_chest(i_ptr);
 			break;
 
@@ -780,7 +780,7 @@ bool player_activate_trap_type(int Ind, s16b y, s16b x, object_type *i_ptr, int 
 				msg_print(Ind, "You resist the effects!");
 				break;
 			}
-			ident = curse_armor(Ind);
+			ident = curse_armor_trap(Ind);
 			ruin_chest(i_ptr);
 			break;
 

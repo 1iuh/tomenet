@@ -5254,6 +5254,119 @@ static bool make_ego_item(int level, object_type *o_ptr, bool good, u64b resf) {
 	return(ret);
 }
 
+/*
+ * Apply a bad ego roll using the same picker as dropped loot.
+ */
+bool make_bad_ego_like_drop(int level, object_type *o_ptr, u64b resf) {
+	if (level < 1) level = 1;
+
+	/* Reset ego state so we can re-roll like a fresh generated item. */
+	o_ptr->name2 = 0;
+	o_ptr->name2b = 0;
+	o_ptr->name3 = 0;
+
+	return(make_ego_item(level, o_ptr, FALSE, resf));
+}
+
+/*
+ * Apply a heavy-cursed bad ego template that matches this base item.
+ * Uses the same depth/rarity constraints as dropped loot ego selection.
+ */
+bool make_heavy_bad_ego_like_drop(int level, object_type *o_ptr, u64b resf) {
+	int i, j, n;
+	int *ok_ego, ok_num = 0;
+	byte tval = o_ptr->tval;
+	u32b f1, f2, f3, f4, f5, f6, esp;
+
+	if (level < 1) level = 1;
+	if (artifact_p(o_ptr)) return(FALSE);
+
+	/* Reset ego state so we can re-roll like a fresh generated item. */
+	o_ptr->name2 = 0;
+	o_ptr->name2b = 0;
+	o_ptr->name3 = 0;
+
+	C_MAKE(ok_ego, e_tval_size[tval], int);
+
+	/* Build candidate list: bad egos that can apply to this base item and can provide HEAVY_CURSE. */
+	for (i = 0, n = e_tval_size[tval]; i < n; i++) {
+		ego_item_type *e_ptr = &e_info[e_tval[tval][i]];
+		bool ok = FALSE;
+		bool heavy = FALSE;
+
+		for (j = 0; j < MAX_EGO_BASETYPES; j++) {
+			if ((e_ptr->tval[j] == o_ptr->tval) && (e_ptr->min_sval[j] <= o_ptr->sval) && (e_ptr->max_sval[j] >= o_ptr->sval)) {
+				ok = TRUE;
+				break;
+			}
+		}
+		if (!ok) continue;
+		if (e_ptr->cost) continue;
+
+		for (j = 0; j < MAX_EGO_R_SECTIONS; j++) {
+			if (e_ptr->flags3[j] & TR3_HEAVY_CURSE) {
+				heavy = TRUE;
+				break;
+			}
+		}
+		if (!heavy) continue;
+
+		ok_ego[ok_num++] = e_tval[tval][i];
+	}
+
+	if (!ok_num) {
+		C_FREE(ok_ego, e_tval_size[tval], int);
+		return(FALSE);
+	}
+
+	/* Roll from heavy-only candidates with the same constraints as make_ego_item(). */
+	for (j = 0; j < ok_num * 20; j++) {
+		ego_item_type *e_ptr;
+
+		i = ok_ego[rand_int(ok_num)];
+		e_ptr = &e_info[i];
+
+		if (i == EGO_ETHEREAL && (resf & RESF_NOETHEREAL)) continue;
+#ifdef NO_MORGUL_IN_IDDC
+		if (i == EGO_MORGUL && in_irondeepdive(&o_ptr->wpos)) continue;
+#endif
+
+		if (e_ptr->level > level) {
+			int d = (e_ptr->level - level);
+			if (rand_int(d) != 0) continue;
+		}
+
+		if (e_ptr->mrarity == 255) continue;
+		if (rand_int(e_ptr->mrarity) > e_ptr->rarity) continue;
+
+		o_ptr->name2 = i;
+		o_ptr->name2b = 0;
+		if (e_ptr->fego1[0] & ETR1_NO_SEED) o_ptr->name3 = 0;
+		else {
+			o_ptr->name3 = (u32b)rand_int(0xFFFF) << 16;
+			o_ptr->name3 += rand_int(0xFFFF);
+		}
+
+		/* Ensure the realized flags actually include HEAVY_CURSE. */
+		object_flags(o_ptr, &f1, &f2, &f3, &f4, &f5, &f6, &esp);
+		if (!(f3 & TR3_HEAVY_CURSE)) {
+			o_ptr->name2 = 0;
+			o_ptr->name3 = 0;
+			continue;
+		}
+
+		C_FREE(ok_ego, e_tval_size[tval], int);
+		return(TRUE);
+	}
+
+	C_FREE(ok_ego, e_tval_size[tval], int);
+	o_ptr->name2 = 0;
+	o_ptr->name2b = 0;
+	o_ptr->name3 = 0;
+
+	return(FALSE);
+}
+
 
 /*
  * Charge a new wand. -- Note: Currently only used for item generation, not for actual recharging.

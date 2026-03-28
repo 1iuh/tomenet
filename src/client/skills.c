@@ -743,6 +743,9 @@ static bool item_tester_hook_scroll_rune(object_type *o_ptr) {
 bool item_tester_hook_armour(object_type *o_ptr) {
 	return(is_armour(o_ptr->tval));
 }
+bool item_tester_hook_curse_gear(object_type *o_ptr) {
+	return(is_armour(o_ptr->tval) || o_ptr->tval == TV_LITE || o_ptr->tval == TV_TOOL);
+}
 bool item_tester_hook_nonart_armour(object_type *o_ptr) {
 	return(is_armour(o_ptr->tval) && !o_ptr->name1);
 }

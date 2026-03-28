@@ -10226,6 +10226,8 @@ extern int PlayerUID;
 #define ITH_ARMOUR		10
 #define ITH_WEAPON		11
 #define ITH_ARMOUR_NO_SHIELD	12
+#define ITH_CURSE_GEAR		13
+#define ITH_CURSE_WEAPON	14
 /* keen hack: 4.6.0+ clients use ITH_ codes >= 50 and in turn signed char overflow < 0
    for transmitting max_weight for picking items for telekinesis. - C. Blue */
 #define ITH_MAX_WEIGHT	50

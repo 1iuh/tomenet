@@ -891,8 +891,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 				}
 
 				/* Hrm, this cannot be destroyed */
-				if (((f4 & TR4_CURSE_NO_DROP) && cursed_p(o_ptr)) ||
-				    like_artifact_p(o_ptr))
+				if (like_artifact_p(o_ptr))
 					resist = TRUE;
 
 				/* Avoid being somewhat spammy, since arts can't be destroyed */

@@ -2235,9 +2235,9 @@ void do_cmd_rip_cloth(int Ind, int slot) {
 
 
 /*
- * Curse the players armor
+ * Shared implementation for armor cursing.
  */
-bool curse_armor(int Ind) {
+static bool curse_armor_aux(int Ind) {
 	player_type *p_ptr = Players[Ind];
 	object_type *o_ptr;
 	char o_name[ONAME_LEN];
@@ -2317,11 +2317,125 @@ bool curse_armor(int Ind) {
 	return(TRUE);
 }
 
+/* Finish deferred scroll consumption after target-based use completes. */
+static void curse_scroll_finish(int Ind) {
+	player_type *p_ptr = Players[Ind];
+
+	if (p_ptr->using_up_item >= 0) {
+		inven_item_describe(Ind, p_ptr->using_up_item);
+		inven_item_optimize(Ind, p_ptr->using_up_item);
+		p_ptr->using_up_item = -1;
+	}
+}
 
 /*
- * Curse the players weapon
+ * Curse armor from reading a scroll.
  */
-bool curse_weapon(int Ind) {
+bool curse_armor_scroll(int Ind) {
+	return(curse_armor_aux(Ind));
+}
+
+/*
+ * Curse armor from a trap trigger.
+ */
+bool curse_armor_trap(int Ind) {
+	return(curse_armor_aux(Ind));
+}
+
+/*
+ * Curse a selected equipped armour slot from scroll use.
+ */
+bool curse_armor_scroll_item(int Ind, int item) {
+	player_type *p_ptr = Players[Ind];
+	object_type *o_ptr;
+	char o_name[ONAME_LEN];
+	bool weapon_scroll_target;
+
+	if (!get_inven_item(Ind, item, &o_ptr)) return(FALSE);
+
+	/* Curse Armour now allows any equipped item except Curse Weapon targets. */
+	weapon_scroll_target = (item == INVEN_WIELD || item == INVEN_BOW ||
+	    (item == INVEN_ARM && o_ptr->tval != TV_SHIELD));
+
+	if (item < INVEN_WIELD || item >= INVEN_TOTAL || weapon_scroll_target) {
+		msg_print(Ind, "Please choose an equipped non-weapon item.");
+		get_item(Ind, ITH_CURSE_GEAR);
+		return(FALSE);
+	}
+
+	if (!o_ptr->k_idx) {
+		msg_print(Ind, "There is no item in that slot.");
+		msg_print(Ind, "Choose an equipped non-weapon item.");
+		get_item(Ind, ITH_CURSE_GEAR);
+		return(FALSE);
+	}
+
+	/* might mess up quest stuff */
+	if (o_ptr->questor ||
+	    (o_ptr->tval == TV_SPECIAL && o_ptr->sval == SV_QUEST)) {
+		msg_print(Ind, "You cannot curse that item.");
+		msg_print(Ind, "Choose an equipped non-weapon item.");
+		get_item(Ind, ITH_CURSE_GEAR);
+		return(FALSE);
+	}
+
+	/* Describe */
+	object_desc(Ind, o_name, o_ptr, FALSE, 3);
+
+	/* Attempt a saving throw for artifacts */
+	if (indestructible_artifact_p(o_ptr)) {
+		msg_format(Ind, "A %s tries to %s, but your %s resists the effects!",
+		    "terrible black aura", "surround your armour", o_name);
+	} else if (artifact_p(o_ptr) && (rand_int(100) < 30)) {
+		msg_format(Ind, "A %s tries to %s, but your %s resists the effects!",
+		    "terrible black aura", "surround your armour", o_name);
+	} else {
+		msg_format(Ind, "A terrible black aura blasts your %s!", o_name);
+
+		if (true_artifact_p(o_ptr)) handle_art_d(o_ptr->name1);
+
+		if (o_ptr->name1 == ART_RANDART) {
+			char ro_name[ONAME_LEN];
+
+			object_desc(0, ro_name, o_ptr, TRUE, 3);
+			s_printf("%s curse_armour(targeted) on random artifact at (%d,%d,%d):\n  %s\n",
+			    showtime(),
+			    p_ptr->wpos.wx, p_ptr->wpos.wy, p_ptr->wpos.wz,
+			    ro_name);
+		}
+
+		o_ptr->name1 = 0;
+		/* Swap to an existing heavy-cursed ego template when possible. */
+		if (!make_heavy_bad_ego_like_drop((p_ptr->wpos.wz > 0) ? p_ptr->wpos.wz : 1, o_ptr, 0)) {
+			msg_print(Ind, "No compatible heavy-curse template exists for this item type.");
+			o_ptr->name2 = is_armour(o_ptr->tval) ? EGO_BLASTED : EGO_CURSED;
+			o_ptr->name3 = 0;
+		}
+		o_ptr->to_a = 0 - randint(5) - randint(5);
+		o_ptr->to_h = 0;
+		o_ptr->to_d = 0;
+		o_ptr->ac = 0;
+		o_ptr->dd = 0;
+		o_ptr->ds = 0;
+
+		o_ptr->ident |= ID_CURSED;
+		o_ptr->ident |= ID_BROKEN;
+
+		p_ptr->update |= (PU_BONUS);
+		p_ptr->update |= (PU_MANA);
+		p_ptr->window |= (PW_INVEN | PW_EQUIP | PW_PLAYER);
+	}
+
+	p_ptr->current_curse = 0;
+	curse_scroll_finish(Ind);
+	return(TRUE);
+}
+
+
+/*
+ * Shared implementation for weapon cursing.
+ */
+static bool curse_weapon_aux(int Ind) {
 	player_type *p_ptr  = Players[Ind];
 	object_type *o_ptr;
 	char o_name[ONAME_LEN];
@@ -2374,8 +2488,11 @@ bool curse_weapon(int Ind) {
 
 		/* Shatter the weapon */
 		o_ptr->name1 = 0;
-		o_ptr->name2 = EGO_SHATTERED;
-		o_ptr->name3 = 0;
+		if (!make_heavy_bad_ego_like_drop((p_ptr->wpos.wz > 0) ? p_ptr->wpos.wz : 1, o_ptr, 0)) {
+			msg_print(Ind, "No compatible heavy-curse template exists for this item type.");
+			o_ptr->name2 = EGO_SHATTERED;
+			o_ptr->name3 = 0;
+		}
 		o_ptr->to_h = 0 - randint(5) - randint(5);
 		o_ptr->to_d = 0 - randint(5) - randint(5);
 		o_ptr->to_a = 0;
@@ -2400,6 +2517,107 @@ bool curse_weapon(int Ind) {
 	}
 
 	/* Notice */
+	return(TRUE);
+}
+
+/*
+ * Curse weapon from reading a scroll.
+ */
+bool curse_weapon_scroll(int Ind) {
+	return(curse_weapon_aux(Ind));
+}
+
+/*
+ * Curse weapon from a trap trigger.
+ */
+bool curse_weapon_trap(int Ind) {
+	return(curse_weapon_aux(Ind));
+}
+
+/*
+ * Curse a selected equipped weapon slot from scroll use.
+ */
+bool curse_weapon_scroll_item(int Ind, int item) {
+	player_type *p_ptr = Players[Ind];
+	object_type *o_ptr;
+	char o_name[ONAME_LEN];
+
+	if (!get_inven_item(Ind, item, &o_ptr)) return(FALSE);
+
+	/* Must target wield slot, offhand weapon (not shield), or ranged weapon slot. */
+	if (item < INVEN_WIELD || item >= INVEN_TOTAL ||
+	    !(item == INVEN_WIELD || item == INVEN_BOW ||
+	      (item == INVEN_ARM && o_ptr->tval != TV_SHIELD))) {
+		msg_print(Ind, "Please choose an equipped weapon (main hand, off-hand weapon, or ranged weapon).");
+		get_item(Ind, ITH_CURSE_WEAPON);
+		return(FALSE);
+	}
+
+	/* Nothing to curse */
+	if (!o_ptr->k_idx) {
+		msg_print(Ind, "There is no weapon in that slot.");
+		msg_print(Ind, "Choose your equipped melee or ranged weapon.");
+		get_item(Ind, ITH_CURSE_WEAPON);
+		return(FALSE);
+	}
+
+	/* might mess up quest stuff */
+	if (o_ptr->questor ||
+	    (o_ptr->tval == TV_SPECIAL && o_ptr->sval == SV_QUEST)) {
+		msg_print(Ind, "You cannot curse that item.");
+		msg_print(Ind, "Choose your equipped melee or ranged weapon.");
+		get_item(Ind, ITH_CURSE_WEAPON);
+		return(FALSE);
+	}
+
+	/* Describe */
+	object_desc(Ind, o_name, o_ptr, FALSE, 3);
+
+	/* Attempt a saving throw */
+	if (indestructible_artifact_p(o_ptr)) {
+		msg_format(Ind, "A %s tries to %s, but your %s resists the effects!",
+		    "terrible black aura", "surround your weapon", o_name);
+	} else if (artifact_p(o_ptr) && (rand_int(100) < 30)) {
+		msg_format(Ind, "A %s tries to %s, but your %s resists the effects!",
+		    "terrible black aura", "surround your weapon", o_name);
+	} else {
+		msg_format(Ind, "A terrible black aura blasts your %s!", o_name);
+
+		if (true_artifact_p(o_ptr)) handle_art_d(o_ptr->name1);
+
+		if (o_ptr->name1 == ART_RANDART) {
+			char ro_name[ONAME_LEN];
+
+			object_desc(0, ro_name, o_ptr, TRUE, 3);
+			s_printf("%s curse_weapon(targeted) on random artifact at (%d,%d,%d):\n  %s\n",
+			    showtime(),
+			    p_ptr->wpos.wx, p_ptr->wpos.wy, p_ptr->wpos.wz,
+			    ro_name);
+		}
+
+		o_ptr->name1 = 0;
+		if (!make_heavy_bad_ego_like_drop((p_ptr->wpos.wz > 0) ? p_ptr->wpos.wz : 1, o_ptr, 0)) {
+			msg_print(Ind, "No compatible heavy-curse template exists for this item type.");
+			o_ptr->name2 = EGO_SHATTERED;
+			o_ptr->name3 = 0;
+		}
+		o_ptr->to_h = 0 - randint(5) - randint(5);
+		o_ptr->to_d = 0 - randint(5) - randint(5);
+		o_ptr->to_a = 0;
+		o_ptr->ac = 0;
+		o_ptr->dd = 0;
+		o_ptr->ds = 0;
+
+		o_ptr->ident |= ID_CURSED;
+		o_ptr->ident |= ID_BROKEN;
+
+		p_ptr->update |= (PU_BONUS);
+		p_ptr->update |= (PU_MANA);
+		p_ptr->window |= (PW_INVEN | PW_EQUIP | PW_PLAYER);
+	}
+
+	p_ptr->current_curse = 0;
+	curse_scroll_finish(Ind);
 	return(TRUE);
 }
 
@@ -2840,11 +3058,27 @@ bool read_scroll(int Ind, int tval, int sval, object_type *o_ptr, int item, bool
 			break;
 
 		case SV_SCROLL_CURSE_ARMOR:
-			if (curse_armor(Ind)) ident = TRUE;
+			if (!o_ptr) break;
+			msg_print(Ind, "This is a Scroll of Curse Armour.");
+			msg_print(Ind, "Choose any equipped non-weapon item to curse.");
+			*used_up = FALSE;
+			clear_current(Ind);
+			p_ptr->current_curse = 3; /* targeted curse armour scroll */
+			p_ptr->using_up_item = item;
+			get_item(Ind, ITH_CURSE_GEAR);
+			ident = TRUE;
 			break;
 
 		case SV_SCROLL_CURSE_WEAPON:
-			if (curse_weapon(Ind)) ident = TRUE;
+			if (!o_ptr) break;
+			msg_print(Ind, "This is a Scroll of Curse Weapon.");
+			msg_print(Ind, "Choose your equipped melee or ranged weapon to curse.");
+			*used_up = FALSE;
+			clear_current(Ind);
+			p_ptr->current_curse = 2; /* targeted curse weapon scroll */
+			p_ptr->using_up_item = item;
+			get_item(Ind, ITH_CURSE_WEAPON);
+			ident = TRUE;
 			break;
 
 		case SV_SCROLL_SUMMON_MONSTER:

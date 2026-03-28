@@ -15137,7 +15137,9 @@ void Handle_item(int Ind, int item) {
 	} else if (p_ptr->current_telekinesis != NULL) {
 		telekinesis_aux(Ind, item);
 	} else if (p_ptr->current_curse != 0) {
-		curse_spell_aux(Ind, item);
+		if (p_ptr->current_curse == 2) curse_weapon_scroll_item(Ind, item);
+		else if (p_ptr->current_curse == 3) curse_armor_scroll_item(Ind, item);
+		else curse_spell_aux(Ind, item);
 	} else if (p_ptr->current_tome_creation) {
 		/* swap-hack: activating a custom tome uses up
 		   the TARGET item, not the tome, of course */

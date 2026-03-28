@@ -8689,15 +8689,6 @@ void do_cmd_throw(int Ind, int dir, int item, char bashing) {
 	returning = (f6 & TR6_RETURNING) && (item >= INVEN_WIELD);
 	blessed_weapon = (f3 & TR3_BLESSED);
 
-	/* Hack - Cannot throw away 'no drop' cursed items */
-	if (cursed_p(o_ptr) && (f4 & TR4_CURSE_NO_DROP) && item >= 0 && !bashing) {
-		/* Oops */
-		msg_print(Ind, "\377yHmmm, you seem to be unable to throw it.");
-
-		/* Nope */
-		return;
-	}
-
 	if (o_ptr->questor) {
 		if (p_ptr->rogue_like_commands)
 			msg_print(Ind, "\377yYou can't drop this item. Use '\377oCTRL+d\377y' to destroy it. (Might abandon the quest!)");

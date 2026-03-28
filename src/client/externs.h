@@ -222,6 +222,7 @@ extern bool item_tester_hook_device(object_type *o_ptr);
 extern bool item_tester_hook_device_charge(object_type *o_ptr); //ENABLE_DEMOLITIONIST
 
 extern bool item_tester_hook_armour(object_type *o_ptr);
+extern bool item_tester_hook_curse_gear(object_type *o_ptr);
 extern bool item_tester_hook_nonart_armour(object_type *o_ptr);
 extern bool item_tester_hook_armour_no_shield(object_type *o_ptr);
 extern bool item_tester_hook_nonart_armour_no_shield(object_type *o_ptr);
