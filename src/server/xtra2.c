@@ -9747,6 +9747,16 @@ void player_death(int Ind) {
 	}
 
 
+	if (streq(p_ptr->died_from, "the Horned reaper")) {
+		int dwd, dd, dm, dy;
+
+		get_date(&dwd, &dd, &dm, &dy);
+		if (dd == 1 && dm == 4) {
+			msg_print(Ind, "\377mApril Fools!");
+			secure = TRUE;
+		}
+	}
+
 	/* Amulet of immortality prevents death */
 	if (!erase && p_ptr->admin_invuln) {
 		if (just_fruitbat_transformation) p_ptr->fruit_bat = 0;
@@ -10062,7 +10072,7 @@ void player_death(int Ind) {
 		if (p_ptr->csane < 0) p_ptr->csane = 0;
 
 		if (secure) {
-			p_ptr->new_level_method = (p_ptr->wpos.wz > 0 ? LEVEL_RECALL_DOWN : LEVEL_RECALL_UP);
+			p_ptr->new_level_method = (p_ptr->wpos.wz < 0 ? LEVEL_RECALL_UP : (p_ptr->wpos.wz ? LEVEL_RECALL_DOWN : LEVEL_OUTSIDE_RAND));
 			p_ptr->recall_pos.wx = p_ptr->wpos.wx;
 			p_ptr->recall_pos.wy = p_ptr->wpos.wy;
 			p_ptr->recall_pos.wz = 0;
