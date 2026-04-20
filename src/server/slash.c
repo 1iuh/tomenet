@@ -1211,7 +1211,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 				bool found = FALSE;
 
 				c[1] = ((p_ptr->pclass == CLASS_PRIEST) ||
-				    (p_ptr->pclass == CLASS_PALADIN)? 'p':'m'); //CLASS_DEATHKNIGHT, CLASS_HELLKNIGHT, CLASS_CPRIEST
+				    (p_ptr->pclass == CLASS_PALADIN) ? 'p' : 'm'); //CLASS_DEATHKNIGHT, CLASS_HELLKNIGHT, CLASS_CPRIEST
 				if (p_ptr->pclass == CLASS_WARRIOR) c[1] = 'n';
 				c[2] = *token[1];
 				c[3] = '\0';
@@ -2064,7 +2064,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 			msg_print(Ind, "\374--------------------------------------------------------------------------------");
 			return;
 		} else if (prefix(messagelc, "/pkill") || prefix(messagelc, "/pk")) {
-			set_pkill(Ind, admin? 10 : 200);
+			set_pkill(Ind, admin ? 10 : 200);
 			return;
 		}
 		/* TODO: move it to the Mayor's house */
@@ -6920,7 +6920,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 //no effect			if (tk && k == 0) msg_broadcast(0, "\377o** Server is being restarted and will be back immediately! **");
 
 				set_runlevel(tk ? k :
-						((cfg.runlevel < 6 || kick)? 6 : 5));
+						((cfg.runlevel < 6 || kick) ? 6 : 5));
 				msg_format(Ind, "Runlevel set to %d", cfg.runlevel);
 
 				/* Hack -- character edit mode */
