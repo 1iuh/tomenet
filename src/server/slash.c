@@ -2431,19 +2431,19 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 
 			if (s == 6) {
 				if (k == 1) {
-					msg_format(Ind, "\374\377%cYou cast a die and get a%s %d", COLOUR_GAMBLE, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
-					msg_format_near(Ind, "\374\377%c%s casts a die and gets a%s %d", COLOUR_GAMBLE, p_ptr->name, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
+					msg_format(Ind, "\374\377%cYou cast a die and get a%s \377%c%d", COLOUR_GAMBLE, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
+					msg_format_near(Ind, "\374\377%c%s casts a die and gets a%s \377%c%d", COLOUR_GAMBLE, p_ptr->name, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
 				} else {
-					msg_format(Ind, "\374\377%cYou cast %d dice and get a%s %d", COLOUR_GAMBLE, k, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
-					msg_format_near(Ind, "\374\377%c%s casts %d dice and gets a%s %d", COLOUR_GAMBLE, p_ptr->name, k, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
+					msg_format(Ind, "\374\377%cYou cast \377%c%d\377- dice and get a%s \377%c%d", COLOUR_GAMBLE, COLOUR_GAMBLE_RESULT, k, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
+					msg_format_near(Ind, "\374\377%c%s casts \377%c%d\377- dice and gets a%s \377%c%d", COLOUR_GAMBLE, p_ptr->name, COLOUR_GAMBLE_RESULT, k, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
 				}
 			} else {
 				if (k == 1) {
-					msg_format(Ind, "\374\377%cYou cast a D%d and get a%s %d", COLOUR_GAMBLE, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
-					msg_format_near(Ind, "\374\377%c%s casts a D%d and gets a%s %d", COLOUR_GAMBLE, p_ptr->name, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
+					msg_format(Ind, "\374\377%cYou cast a \377%cD%d\377- and get a%s \377%c%d", COLOUR_GAMBLE, COLOUR_GAMBLE_RESULT, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
+					msg_format_near(Ind, "\374\377%c%s casts a \377%cD%d\377- and gets a%s \377%c%d", COLOUR_GAMBLE, p_ptr->name, COLOUR_GAMBLE_RESULT, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
 				} else {
-					msg_format(Ind, "\374\377%cYou cast %dD%d and get a%s %d", COLOUR_GAMBLE, k, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
-					msg_format_near(Ind, "\374\377%c%s casts %dD%d and gets a%s %d", COLOUR_GAMBLE, p_ptr->name, k, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", rn);
+					msg_format(Ind, "\374\377%cYou cast \377%c%dD%d\377- and get a%s \377%c%d", COLOUR_GAMBLE, COLOUR_GAMBLE_RESULT, k, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
+					msg_format_near(Ind, "\374\377%c%s casts \377%c%dD%d\377- and gets a%s \377%c%d", COLOUR_GAMBLE, p_ptr->name, COLOUR_GAMBLE_RESULT, k, s, (first_digit == 8 || rn == 11 || rn == 18) ? "n" : "", COLOUR_GAMBLE_RESULT, rn);
 				}
 			}
 			s_printf("Game: Dice - %s rolls %dd%d -> %d.\n", p_ptr->name, k, s, rn);
@@ -2764,6 +2764,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 			bool down = (message[5] == 'd'); //commands /deald and /drawd for a down card
 			bool uhand = (message[5] == 'u'); //commands /dealu and /drawu for an underhanded card
  #endif
+			cptr card_attr;
 
 			if (p_ptr->body_monster) {
 				monster_race *r_ptr = &r_info[p_ptr->body_monster];
@@ -2824,6 +2825,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 			}
 
 			/* draw one */
+			card_attr = "\377s"; //paranoia default
 			j = randint(k);
 			for (i = 0; i < 16; i++) {
 				if (p_ptr->cards_diamonds & (0x1 << i)) {
@@ -2831,6 +2833,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 					if (!j) {
 						p_ptr->cards_diamonds &= ~(0x1 << i);
 						flower = "Diamonds";
+						card_attr = "\377r";
 						break;
 					}
 				}
@@ -2839,6 +2842,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 					if (!j) {
 						p_ptr->cards_hearts &= ~(0x1 << i);
 						flower = "Hearts";
+						card_attr = "\377r";
 						break;
 					}
 				}
@@ -2847,6 +2851,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 					if (!j) {
 						p_ptr->cards_spades &= ~(0x1 << i);
 						flower = "Spades";
+						card_attr = "\377D";
 						break;
 					}
 				}
@@ -2855,6 +2860,7 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 					if (!j) {
 						p_ptr->cards_clubs &= ~(0x1 << i);
 						flower = "Clubs";
+						card_attr = "\377D";
 						break;
 					}
 				}
@@ -2881,8 +2887,8 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 			if (draw) {
 				/* draw it */
 				if (i < 13) {
-					msg_format(p, "\377%cYou draw the %s of %s from %s", COLOUR_GAMBLE, value, flower, p_ptr->name);
-					msg_format_near(p, "\377%c%s draws the %s of %s from %s", COLOUR_GAMBLE, Players[p]->name, value, flower, p_ptr->name);
+					msg_format(p, "\377%cYou draw the %s%s of %s\377- from %s", COLOUR_GAMBLE, card_attr, value, flower, p_ptr->name);
+					msg_format_near(p, "\377%c%s draws the %s%s of %s\377- from %s", COLOUR_GAMBLE, Players[p]->name, card_attr, value, flower, p_ptr->name);
 				} else {
 					msg_format(p, "\377%cYou draw a %s from %s", COLOUR_GAMBLE, value, p_ptr->name);
 					msg_format_near(p, "\377%c%s draws a %s from %s", COLOUR_GAMBLE, Players[p]->name, value, p_ptr->name);
@@ -2892,8 +2898,8 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 				/* deal it */
 				if (!p) {
 					if (i < 13) {
-						msg_format(Ind, "\377%cYou deal the %s of %s", COLOUR_GAMBLE, value, flower);
-						msg_format_near(Ind, "\377%c%s deals the %s of %s", COLOUR_GAMBLE, p_ptr->name, value, flower);
+						msg_format(Ind, "\377%cYou deal the %s%s of %s\377-", COLOUR_GAMBLE, card_attr, value, flower);
+						msg_format_near(Ind, "\377%c%s deals the %s%s of %s\377-", COLOUR_GAMBLE, p_ptr->name, card_attr, value, flower);
 					} else {
 						msg_format(Ind, "\377%cYou deal a %s", COLOUR_GAMBLE, value);
 						msg_format_near(Ind, "\377%c%s deals a %s", COLOUR_GAMBLE, p_ptr->name, value);
@@ -2901,8 +2907,8 @@ void do_slash_cmd(int Ind, char *message, char *message_u) {
 					s_printf("Game: Cards - %s deals %s of %s (%d).\n", p_ptr->name, value, flower, k);
 				} else {
 					if (i < 13) {
-						msg_format(Ind, "\377%cYou deal the %s of %s to %s", COLOUR_GAMBLE, value, flower, Players[p]->name);
-						msg_format_near(Ind, "\377%c%s deals the %s of %s to %s", COLOUR_GAMBLE, p_ptr->name, value, flower, Players[p]->name);
+						msg_format(Ind, "\377%cYou deal the %s%s of %s\377- to %s", COLOUR_GAMBLE, card_attr, value, flower, Players[p]->name);
+						msg_format_near(Ind, "\377%c%s deals the %s%s of %s\377- to %s", COLOUR_GAMBLE, p_ptr->name, card_attr, value, flower, Players[p]->name);
 					} else {
 						msg_format(Ind, "\377%cYou deal a %s to %s", COLOUR_GAMBLE, value, Players[p]->name);
 						msg_format_near(Ind, "\377%c%s deals a %s to %s", COLOUR_GAMBLE, p_ptr->name, value, Players[p]->name);
