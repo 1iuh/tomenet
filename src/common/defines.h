@@ -40,10 +40,10 @@
 /* MAJOR/MINOR/PATCH version should be 0-15. BUILD == 1 means 'test build' */
 #define VERSION_MAJOR		4
 #define VERSION_MINOR		9
-#define VERSION_PATCH		4
+#define VERSION_PATCH		6
 #define VERSION_EXTRA		0
 #define VERSION_BRANCH		0
-#define VERSION_BUILD		3
+#define VERSION_BUILD		0
 
 /* MAJOR/MINOR/PATCH version that counts as 'latest' (should be 0-15).
    If a player is online with a version > this && <= current version (VERSION_)
@@ -59,10 +59,10 @@
 /* maximum MAJOR/MINOR/PATCH version that counts as 'outdated' (should be 0-15). */
 #define VERSION_MAJOR_OUTDATED	4
 #define VERSION_MINOR_OUTDATED	9
-#define VERSION_PATCH_OUTDATED	3
+#define VERSION_PATCH_OUTDATED	6
 #define VERSION_EXTRA_OUTDATED	0
 #define VERSION_BRANCH_OUTDATED	0
-#define VERSION_BUILD_OUTDATED	1 /* should always be 1 (or higher) to invalidate previous 'test' versions */
+#define VERSION_BUILD_OUTDATED	0 /* should always be 1 (or higher) to invalidate previous 'test' versions */
 
 /* Server release version tag (such as "a", "b" etc), or empty if none:
    Minimum client version tag required to "play 100%". */
